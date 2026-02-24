@@ -1,0 +1,9 @@
+{
+  "name": "prompt-factory",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Createur de prompts LLM optimises - formulaire wizard interactif",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0"
+  }
+}
