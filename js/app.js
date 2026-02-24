@@ -1,14 +1,18 @@
 /**
  * Main Application Controller
- * Manages wizard navigation, form state, localStorage, events
+ * Manages wizard navigation (8 steps), form state, localStorage, events
  */
 const App = {
 
   currentStep: 1,
-  totalSteps: 6,
+  totalSteps: 8,
   generatedPrompts: {},
+  originalPrompts: {},
   activeLLMTab: null,
+  activeLLMTabOptimize: null,
   editMode: false,
+  previewMode: 'split', // 'split' or 'combined'
+  smartQuestionsGenerated: false,
 
   // ===== INITIALIZATION =====
 
@@ -17,6 +21,7 @@ const App = {
     this.renderStepIndicators();
     this.renderLLMCards();
     this.renderImageModelCards();
+    this.renderVideoModelCards();
     this.renderTaskCards();
     this.bindEvents();
     this.updateNavigation();
@@ -33,6 +38,15 @@ const App = {
       dot.className = 'step-dot' + (i === 1 ? ' active' : '');
       dot.textContent = i;
       dot.dataset.step = i;
+      // Allow clicking on completed steps to go back
+      dot.addEventListener('click', () => {
+        const targetStep = parseInt(dot.dataset.step);
+        if (targetStep < this.currentStep) {
+          this.currentStep = targetStep;
+          this.showStep(targetStep);
+          if (targetStep === 4) this.updateStep4Fields();
+        }
+      });
       container.appendChild(dot);
     }
   },
@@ -55,9 +69,10 @@ const App = {
     if (this.currentStep < this.totalSteps) {
       this.currentStep++;
       this.showStep(this.currentStep);
-      // Update conditional fields when entering step 4
       if (this.currentStep === 4) this.updateStep4Fields();
-      if (this.currentStep === 6) this.generatePreview();
+      if (this.currentStep === 6) this.triggerSmartQuestions();
+      if (this.currentStep === 7) this.generatePreview();
+      if (this.currentStep === 8) this.prepareOptimizationStep();
     }
   },
 
@@ -66,6 +81,16 @@ const App = {
       this.currentStep--;
       this.showStep(this.currentStep);
       if (this.currentStep === 4) this.updateStep4Fields();
+    }
+  },
+
+  goToStep(stepNumber) {
+    if (stepNumber >= 1 && stepNumber <= this.totalSteps) {
+      this.currentStep = stepNumber;
+      this.showStep(stepNumber);
+      if (stepNumber === 4) this.updateStep4Fields();
+      if (stepNumber === 7) this.generatePreview();
+      if (stepNumber === 8) this.prepareOptimizationStep();
     }
   },
 
@@ -96,9 +121,6 @@ const App = {
 
   // ===== CONDITIONAL FIELDS (Step 4) =====
 
-  /**
-   * Show/hide text, image, video fields based on selected models
-   */
   updateStep4Fields() {
     const selected = this._getSelectedModels();
     const hasText = PromptBuilder.hasTextModel(selected);
@@ -156,25 +178,20 @@ const App = {
         const hasImage = PromptBuilder.hasImageModel(selected);
         const hasVideo = PromptBuilder.hasVideoModel(selected);
 
-        // Validate text task description if text models selected
         if (hasText) {
           const desc = document.getElementById('task-description').value.trim();
           if (!desc) { this._showError('error-step4'); return false; }
         }
-        // Validate image subject if image models selected
         if (hasImage) {
           const subj = document.getElementById('img-subject').value.trim();
           if (!subj) { this._showError('error-step4'); return false; }
         }
-        // Validate video subject if video models selected
         if (hasVideo) {
           const subj = document.getElementById('vid-subject').value.trim();
           if (!subj) { this._showError('error-step4'); return false; }
         }
         return true;
       }
-      case 5:
-        return true;
       default:
         return true;
     }
@@ -189,12 +206,25 @@ const App = {
     document.querySelectorAll('.validation-error').forEach(e => e.classList.add('hidden'));
   },
 
+  // ===== "AUTRE" PATTERN =====
+
+  _bindAutrePattern(selectId, inputId) {
+    const select = document.getElementById(selectId);
+    const input = document.getElementById(inputId);
+    if (!select || !input) return;
+
+    select.addEventListener('change', () => {
+      const isAutre = select.value === 'autre';
+      input.classList.toggle('hidden', !isAutre);
+      if (isAutre) input.focus();
+    });
+  },
+
   // ===== LLM CARDS (Step 1) =====
 
   renderLLMCards() {
     const grid = document.getElementById('llm-grid');
     grid.innerHTML = '';
-
     Object.entries(LLMAdapters.config).forEach(([key, cfg]) => {
       const card = this._createModelCard(key, cfg);
       grid.appendChild(card);
@@ -205,8 +235,17 @@ const App = {
     const grid = document.getElementById('image-grid');
     if (!grid) return;
     grid.innerHTML = '';
-
     Object.entries(LLMAdapters.imageConfig).forEach(([key, cfg]) => {
+      const card = this._createModelCard(key, cfg);
+      grid.appendChild(card);
+    });
+  },
+
+  renderVideoModelCards() {
+    const grid = document.getElementById('video-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    Object.entries(LLMAdapters.videoConfig).forEach(([key, cfg]) => {
       const card = this._createModelCard(key, cfg);
       grid.appendChild(card);
     });
@@ -217,7 +256,7 @@ const App = {
     card.className = 'llm-card';
     card.dataset.llm = key;
     card.innerHTML = `
-      <div class="llm-icon" style="background: ${cfg.color}">${cfg.letter}</div>
+      <div class="llm-icon-svg">${cfg.svg}</div>
       <div class="llm-info">
         <h3>${cfg.name}</h3>
         <p>${cfg.description}</p>
@@ -237,17 +276,17 @@ const App = {
     grid.innerHTML = '';
 
     const tasks = [
-      { key: 'redaction', icon: '\u270D\uFE0F', label: 'Redaction / Generation' },
-      { key: 'analyse', icon: '\uD83D\uDD0D', label: 'Analyse / Resume' },
-      { key: 'code', icon: '\uD83D\uDCBB', label: 'Code / Developpement' },
-      { key: 'extraction', icon: '\uD83D\uDCE5', label: 'Extraction de donnees' },
+      { key: 'redaction', icon: '\u270D\uFE0F', label: 'Rédaction / Génération' },
+      { key: 'analyse', icon: '\uD83D\uDD0D', label: 'Analyse / Résumé' },
+      { key: 'code', icon: '\uD83D\uDCBB', label: 'Code / Développement' },
+      { key: 'extraction', icon: '\uD83D\uDCE5', label: 'Extraction de données' },
       { key: 'classification', icon: '\uD83C\uDFF7\uFE0F', label: 'Classification / Tri' },
       { key: 'traduction', icon: '\uD83C\uDF10', label: 'Traduction / Transformation' },
-      { key: 'qa-rag', icon: '\u2753', label: 'Question-Reponse / RAG' },
+      { key: 'qa-rag', icon: '\u2753', label: 'Question-Réponse / RAG' },
       { key: 'agent', icon: '\uD83E\uDD16', label: 'Agent / Automatisation' },
-      { key: 'brainstorming', icon: '\uD83D\uDCA1', label: 'Brainstorming / Creativite' },
-      { key: 'image-gen', icon: '\uD83C\uDFA8', label: 'Generation d\'images' },
-      { key: 'video-gen', icon: '\uD83C\uDFAC', label: 'Generation de videos' },
+      { key: 'brainstorming', icon: '\uD83D\uDCA1', label: 'Brainstorming / Créativité' },
+      { key: 'image-gen', icon: '\uD83C\uDFA8', label: 'Génération d\'images' },
+      { key: 'video-gen', icon: '\uD83C\uDFAC', label: 'Génération de vidéos' },
       { key: 'autre', icon: '\u2699\uFE0F', label: 'Autre' }
     ];
 
@@ -293,12 +332,12 @@ const App = {
     pair.innerHTML = `
       <button class="btn-remove" title="Supprimer">&times;</button>
       <div class="form-group">
-        <label>Entree (input)</label>
-        <textarea class="example-input" rows="2" placeholder="Exemple d'entree..."></textarea>
+        <label>Entrée (ce que l'utilisateur envoie au LLM)</label>
+        <textarea class="example-input" rows="2" placeholder="Ex: 'Résume ce texte en 3 points'"></textarea>
       </div>
       <div class="form-group">
-        <label>Sortie attendue (output)</label>
-        <textarea class="example-output" rows="2" placeholder="Reponse attendue..."></textarea>
+        <label>Sortie attendue (la réponse idéale du LLM)</label>
+        <textarea class="example-output" rows="2" placeholder="Ex: '1. Point principal... 2. Détail... 3. Conclusion...'"></textarea>
       </div>
     `;
     pair.querySelector('.btn-remove').addEventListener('click', () => {
@@ -316,11 +355,124 @@ const App = {
     badge.classList.toggle('hidden', count === 0);
   },
 
-  // ===== PREVIEW & GENERATION (Step 6) =====
+  // ===== SMART QUESTIONS (Step 6) =====
+
+  triggerSmartQuestions() {
+    if (this.smartQuestionsGenerated) return;
+
+    const apiKey = localStorage.getItem('pf_api_key');
+    if (!apiKey) {
+      document.getElementById('questions-loading').classList.add('hidden');
+      document.getElementById('smart-questions-skip').classList.remove('hidden');
+      return;
+    }
+
+    this.generateSmartQuestions();
+  },
+
+  async generateSmartQuestions() {
+    const apiKey = localStorage.getItem('pf_api_key');
+    if (!apiKey) return;
+
+    const loading = document.getElementById('questions-loading');
+    const errorDiv = document.getElementById('smart-questions-error');
+    const skipDiv = document.getElementById('smart-questions-skip');
+    const listDiv = document.getElementById('smart-questions-list');
+
+    loading.classList.remove('hidden');
+    errorDiv.classList.add('hidden');
+    skipDiv.classList.add('hidden');
+    listDiv.classList.add('hidden');
+
+    const formData = PromptBuilder.collectFormData();
+
+    try {
+      const response = await fetch('/api/questions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ formData, apiKey })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erreur lors de la generation des questions');
+      }
+
+      const result = await response.json();
+      this.renderSmartQuestions(result.questions);
+      this.smartQuestionsGenerated = true;
+
+      if (result.inputTokens || result.outputTokens) {
+        UIHelpers.showToast(
+          `Questions generees (${result.inputTokens} in / ${result.outputTokens} out tokens)`,
+          'info', 4000
+        );
+      }
+    } catch (error) {
+      loading.classList.add('hidden');
+      errorDiv.classList.remove('hidden');
+      UIHelpers.showToast('Erreur : ' + error.message, 'error', 5000);
+    }
+  },
+
+  renderSmartQuestions(questions) {
+    const loading = document.getElementById('questions-loading');
+    const listDiv = document.getElementById('smart-questions-list');
+
+    loading.classList.add('hidden');
+    listDiv.innerHTML = '';
+
+    if (!questions || questions.length === 0) {
+      listDiv.innerHTML = '<p class="helper-text">Aucune question supplementaire necessaire.</p>';
+      listDiv.classList.remove('hidden');
+      return;
+    }
+
+    questions.forEach((q) => {
+      const div = document.createElement('div');
+      div.className = 'smart-question';
+      div.dataset.questionId = q.id || ('q-' + Math.random().toString(36).slice(2, 8));
+
+      let fieldHtml = '';
+      if (q.type === 'textarea') {
+        fieldHtml = `<textarea class="smart-answer" rows="3" placeholder="${q.placeholder || ''}"></textarea>`;
+      } else if (q.type === 'choice' && q.options) {
+        fieldHtml = `<select class="smart-answer">
+          <option value="">-- Choisir --</option>
+          ${q.options.map(o => `<option value="${o}">${o}</option>`).join('')}
+        </select>`;
+      } else {
+        fieldHtml = `<input type="text" class="smart-answer" placeholder="${q.placeholder || ''}">`;
+      }
+
+      div.innerHTML = `<label>${q.question}</label>${fieldHtml}`;
+      listDiv.appendChild(div);
+    });
+
+    listDiv.classList.remove('hidden');
+  },
+
+  collectSmartAnswers() {
+    const answers = [];
+    document.querySelectorAll('.smart-question').forEach(q => {
+      const id = q.dataset.questionId;
+      const input = q.querySelector('.smart-answer');
+      const value = input ? input.value.trim() : '';
+      if (value) {
+        const label = q.querySelector('label').textContent;
+        answers.push({ question: label, answer: value });
+      }
+    });
+    return answers;
+  },
+
+  // ===== PREVIEW & GENERATION (Step 7) =====
 
   generatePreview() {
     const formData = PromptBuilder.collectFormData();
     this.generatedPrompts = PromptBuilder.generateAll(formData);
+    // Save a copy as originals for comparison in step 8
+    this.originalPrompts = JSON.parse(JSON.stringify(this.generatedPrompts));
     this.renderLLMTabs();
     const firstModel = formData.targetLLMs[0];
     this.showPromptForLLM(firstModel);
@@ -329,7 +481,7 @@ const App = {
   renderLLMTabs() {
     const tabsContainer = document.getElementById('llm-tabs');
     tabsContainer.innerHTML = '';
-    const allConfigs = { ...LLMAdapters.config, ...LLMAdapters.imageConfig };
+    const allConfigs = { ...LLMAdapters.config, ...LLMAdapters.imageConfig, ...LLMAdapters.videoConfig };
 
     Object.keys(this.generatedPrompts).forEach(key => {
       const cfg = allConfigs[key];
@@ -345,12 +497,12 @@ const App = {
   showPromptForLLM(llmKey) {
     this.activeLLMTab = llmKey;
 
-    document.querySelectorAll('.llm-tab').forEach(t => {
+    document.querySelectorAll('#llm-tabs .llm-tab').forEach(t => {
       t.classList.toggle('active', t.dataset.llm === llmKey);
     });
 
     const adapted = this.generatedPrompts[llmKey];
-    const markdown = LLMAdapters.renderPreview(adapted, llmKey);
+    const markdown = LLMAdapters.renderPreview(adapted, llmKey, this.previewMode);
 
     document.getElementById('prompt-editor').value = markdown;
     document.getElementById('prompt-preview').innerHTML = UIHelpers.renderMarkdown(markdown);
@@ -362,28 +514,117 @@ const App = {
     this.setEditMode(false);
   },
 
+  setPreviewMode(mode) {
+    this.previewMode = mode;
+
+    document.getElementById('btn-mode-split').classList.toggle('active', mode === 'split');
+    document.getElementById('btn-mode-combined').classList.toggle('active', mode === 'combined');
+
+    if (this.activeLLMTab && this.generatedPrompts[this.activeLLMTab]) {
+      this.showPromptForLLM(this.activeLLMTab);
+    }
+  },
+
   setEditMode(isEdit) {
     this.editMode = isEdit;
     const editor = document.getElementById('prompt-editor');
     const preview = document.getElementById('prompt-preview');
     const btnEdit = document.getElementById('btn-edit-mode');
-    const btnPreview = document.getElementById('btn-preview-mode');
 
     if (isEdit) {
       editor.classList.remove('hidden');
       preview.classList.add('hidden');
       btnEdit.classList.add('active');
-      btnPreview.classList.remove('active');
     } else {
       editor.classList.add('hidden');
       preview.classList.remove('hidden');
       btnEdit.classList.remove('active');
-      btnPreview.classList.add('active');
       preview.innerHTML = UIHelpers.renderMarkdown(editor.value);
     }
   },
 
-  // ===== AI REFINEMENT =====
+  // ===== FEEDBACK (Step 7) =====
+
+  applyFeedback() {
+    const feedback = document.getElementById('preview-feedback').value.trim();
+    if (!feedback) {
+      UIHelpers.showToast('Veuillez decrire les modifications souhaitees.', 'error');
+      return;
+    }
+
+    // Append feedback as constraint and regenerate
+    const constraintsEl = document.getElementById('constraints');
+    if (constraintsEl.value.trim()) {
+      constraintsEl.value += '\n' + feedback;
+    } else {
+      constraintsEl.value = feedback;
+    }
+
+    this.generatePreview();
+    document.getElementById('preview-feedback').value = '';
+    UIHelpers.showToast('Prompt regenere avec vos modifications.', 'success');
+  },
+
+  // ===== AI OPTIMIZATION (Step 8) =====
+
+  prepareOptimizationStep() {
+    // Ensure we have generated prompts
+    if (Object.keys(this.originalPrompts).length === 0) {
+      this.generatePreview();
+    }
+
+    // Render tabs for step 8
+    const tabsContainer = document.getElementById('llm-tabs-optimize');
+    tabsContainer.innerHTML = '';
+    const allConfigs = { ...LLMAdapters.config, ...LLMAdapters.imageConfig, ...LLMAdapters.videoConfig };
+
+    Object.keys(this.originalPrompts).forEach(key => {
+      const cfg = allConfigs[key];
+      const tab = document.createElement('button');
+      tab.className = 'llm-tab';
+      tab.dataset.llm = key;
+      tab.textContent = cfg ? cfg.name : key;
+      tab.addEventListener('click', () => this.showOptimizationForLLM(key));
+      tabsContainer.appendChild(tab);
+    });
+
+    // Show first model
+    const firstModel = Object.keys(this.originalPrompts)[0];
+    this.showOptimizationForLLM(firstModel);
+    this.checkApiKey();
+  },
+
+  showOptimizationForLLM(llmKey) {
+    this.activeLLMTabOptimize = llmKey;
+
+    document.querySelectorAll('#llm-tabs-optimize .llm-tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.llm === llmKey);
+    });
+
+    // Show original prompt on the left
+    const original = this.originalPrompts[llmKey];
+    const originalMd = LLMAdapters.renderPreview(original, llmKey, 'split');
+    document.getElementById('preview-original').innerHTML = UIHelpers.renderMarkdown(originalMd);
+
+    const originalRaw = LLMAdapters.getRawPrompt(original);
+    const originalTokens = UIHelpers.estimateTokens(originalRaw);
+    document.getElementById('token-counter-original').textContent = `~${originalTokens} tokens`;
+
+    // Check if we have an optimized version
+    if (this.generatedPrompts[llmKey] && this.generatedPrompts[llmKey]._optimized) {
+      const optimizedMd = this.generatedPrompts[llmKey]._optimizedMarkdown;
+      document.getElementById('preview-optimized').innerHTML = UIHelpers.renderMarkdown(optimizedMd);
+      const optimizedTokens = UIHelpers.estimateTokens(optimizedMd);
+      document.getElementById('token-counter-optimized').textContent = `~${optimizedTokens} tokens`;
+      document.getElementById('btn-copy-optimized').disabled = false;
+      document.getElementById('btn-download-optimized').disabled = false;
+    } else {
+      document.getElementById('preview-optimized').innerHTML = '<div class="comparison-placeholder"><p>Cliquez sur « Lancer l\'optimisation » pour voir le resultat ici.</p></div>';
+      document.getElementById('token-counter-optimized').textContent = '';
+      document.getElementById('btn-copy-optimized').disabled = true;
+      document.getElementById('btn-download-optimized').disabled = true;
+    }
+  },
 
   async optimizeWithAI() {
     const apiKey = localStorage.getItem('pf_api_key');
@@ -393,7 +634,11 @@ const App = {
       return;
     }
 
-    const currentPrompt = document.getElementById('prompt-editor').value;
+    const llmKey = this.activeLLMTabOptimize;
+    if (!llmKey || !this.originalPrompts[llmKey]) return;
+
+    const original = this.originalPrompts[llmKey];
+    const originalRaw = LLMAdapters.getRawPrompt(original);
     const formData = PromptBuilder.collectFormData();
 
     this._setLoadingState(true);
@@ -403,8 +648,8 @@ const App = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: currentPrompt,
-          targetLLM: this.activeLLMTab,
+          prompt: originalRaw,
+          targetLLM: llmKey,
           taskType: formData.taskType,
           complexity: formData.complexity,
           apiKey: apiKey
@@ -418,11 +663,19 @@ const App = {
 
       const result = await response.json();
 
-      document.getElementById('prompt-editor').value = result.optimizedPrompt;
-      document.getElementById('prompt-preview').innerHTML = UIHelpers.renderMarkdown(result.optimizedPrompt);
+      // Store optimized version
+      if (!this.generatedPrompts[llmKey]) {
+        this.generatedPrompts[llmKey] = { ...original };
+      }
+      this.generatedPrompts[llmKey]._optimized = true;
+      this.generatedPrompts[llmKey]._optimizedMarkdown = result.optimizedPrompt;
 
+      // Update right panel
+      document.getElementById('preview-optimized').innerHTML = UIHelpers.renderMarkdown(result.optimizedPrompt);
       const tokens = UIHelpers.estimateTokens(result.optimizedPrompt);
-      document.getElementById('token-counter').textContent = `~${tokens} tokens`;
+      document.getElementById('token-counter-optimized').textContent = `~${tokens} tokens`;
+      document.getElementById('btn-copy-optimized').disabled = false;
+      document.getElementById('btn-download-optimized').disabled = false;
 
       UIHelpers.showToast('Prompt optimise avec succes !', 'success');
 
@@ -451,7 +704,7 @@ const App = {
       btn.disabled = !localStorage.getItem('pf_api_key');
       btn.innerHTML = `
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-        Optimiser avec l'IA
+        Lancer l'optimisation IA
       `;
       status.classList.add('hidden');
     }
@@ -509,6 +762,13 @@ const App = {
     document.getElementById('btn-next').addEventListener('click', () => this.nextStep());
     document.getElementById('btn-prev').addEventListener('click', () => this.prevStep());
 
+    // Logo -> home (step 1)
+    document.getElementById('logo-home').addEventListener('click', (e) => {
+      e.preventDefault();
+      this.currentStep = 1;
+      this.showStep(1);
+    });
+
     // Settings modal
     document.getElementById('btn-settings').addEventListener('click', () => this.openSettings());
     document.getElementById('btn-close-settings').addEventListener('click', () => this.closeSettings());
@@ -531,6 +791,13 @@ const App = {
       if (e.target.classList.contains('modal-overlay')) this.closeSettings();
     });
 
+    // "Autre" pattern bindings
+    this._bindAutrePattern('domain', 'domain-autre');
+    this._bindAutrePattern('audience', 'audience-autre');
+    this._bindAutrePattern('output-language', 'language-autre');
+    this._bindAutrePattern('tone', 'tone-autre');
+    this._bindAutrePattern('output-format', 'output-format-autre');
+
     // Few-shot toggle
     document.getElementById('few-shot-toggle').addEventListener('change', (e) => {
       const content = document.getElementById('few-shot-content');
@@ -550,13 +817,21 @@ const App = {
       e.target.dataset.manuallyChanged = 'true';
     });
 
-    // Step 6: Edit/Preview mode
-    document.getElementById('btn-edit-mode').addEventListener('click', () => this.setEditMode(true));
-    document.getElementById('btn-preview-mode').addEventListener('click', () => this.setEditMode(false));
+    // Step 6: Retry smart questions
+    const retryBtn = document.getElementById('retry-questions');
+    if (retryBtn) {
+      retryBtn.addEventListener('click', () => {
+        this.smartQuestionsGenerated = false;
+        this.generateSmartQuestions();
+      });
+    }
 
-    // Step 6: Actions
-    document.getElementById('btn-optimize').addEventListener('click', () => this.optimizeWithAI());
+    // Step 7: Preview mode tabs
+    document.getElementById('btn-mode-split').addEventListener('click', () => this.setPreviewMode('split'));
+    document.getElementById('btn-mode-combined').addEventListener('click', () => this.setPreviewMode('combined'));
+    document.getElementById('btn-edit-mode').addEventListener('click', () => this.setEditMode(!this.editMode));
 
+    // Step 7: Actions
     document.getElementById('btn-copy').addEventListener('click', () => {
       const text = document.getElementById('prompt-editor').value;
       UIHelpers.copyToClipboard(text).then(() => {
@@ -571,9 +846,53 @@ const App = {
       UIHelpers.showToast('Fichier telecharge.', 'success');
     });
 
+    // Step 7: Feedback
+    document.getElementById('btn-apply-feedback').addEventListener('click', () => this.applyFeedback());
+
+    // Step 8: Optimize
+    document.getElementById('btn-optimize').addEventListener('click', () => this.optimizeWithAI());
+
+    // Step 8: Copy/Download original
+    document.getElementById('btn-copy-original').addEventListener('click', () => {
+      const llmKey = this.activeLLMTabOptimize;
+      if (llmKey && this.originalPrompts[llmKey]) {
+        const text = LLMAdapters.getRawPrompt(this.originalPrompts[llmKey]);
+        UIHelpers.copyToClipboard(text).then(() => {
+          UIHelpers.showToast('Prompt original copie !', 'success');
+        });
+      }
+    });
+
+    document.getElementById('btn-download-original').addEventListener('click', () => {
+      const llmKey = this.activeLLMTabOptimize;
+      if (llmKey && this.originalPrompts[llmKey]) {
+        const text = LLMAdapters.getRawPrompt(this.originalPrompts[llmKey]);
+        UIHelpers.downloadAsMarkdown(text, `prompt-original-${llmKey}.md`);
+        UIHelpers.showToast('Fichier telecharge.', 'success');
+      }
+    });
+
+    // Step 8: Copy/Download optimized
+    document.getElementById('btn-copy-optimized').addEventListener('click', () => {
+      const llmKey = this.activeLLMTabOptimize;
+      if (llmKey && this.generatedPrompts[llmKey] && this.generatedPrompts[llmKey]._optimizedMarkdown) {
+        UIHelpers.copyToClipboard(this.generatedPrompts[llmKey]._optimizedMarkdown).then(() => {
+          UIHelpers.showToast('Prompt optimise copie !', 'success');
+        });
+      }
+    });
+
+    document.getElementById('btn-download-optimized').addEventListener('click', () => {
+      const llmKey = this.activeLLMTabOptimize;
+      if (llmKey && this.generatedPrompts[llmKey] && this.generatedPrompts[llmKey]._optimizedMarkdown) {
+        UIHelpers.downloadAsMarkdown(this.generatedPrompts[llmKey]._optimizedMarkdown, `prompt-optimise-${llmKey}.md`);
+        UIHelpers.showToast('Fichier telecharge.', 'success');
+      }
+    });
+
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
+      if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') {
         e.preventDefault();
         this.nextStep();
       }

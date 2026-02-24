@@ -6,7 +6,7 @@
  * - prompt-ingenieur-roman: PTCF, XML Claude, LLM-specific patterns
  * - prompt-engineering-patterns: Template architecture, few-shot strategies
  * - prompt-engineering-antigravity: Progressive Disclosure, Instruction Hierarchy
- * - prompt-engineering-inference: Image (FLUX/SD), Video (Veo) prompting
+ * - prompt-engineering-inference: Image (FLUX/SD/Nano Banana), Video (Veo) prompting
  * - enhance-prompt: 4-step enhancement pipeline, UI/UX vocabulary
  */
 const LLMAdapters = {
@@ -15,55 +15,58 @@ const LLMAdapters = {
   config: {
     claude: {
       name: 'Claude',
-      color: '#D97757',
-      letter: 'C',
-      description: 'Anthropic - XML structure, donnees en haut',
+      svg: '<svg viewBox="0 0 32 32" fill="none"><path d="M21.15 4.76l-5.88 18.48h-2.89L6.5 4.76h3.15l4.35 14.48L18.33 4.76h2.82zm2.64 13.67c.13 1.02.57 1.82 1.33 2.4.76.57 1.7.86 2.82.86.8 0 1.5-.15 2.1-.44.6-.3 1.02-.72 1.24-1.26h2.55c-.4 1.2-1.1 2.12-2.1 2.78-1 .66-2.27.98-3.79.98-1.23 0-2.32-.27-3.27-.82a5.6 5.6 0 01-2.2-2.32c-.52-1-.78-2.16-.78-3.48 0-1.3.26-2.45.78-3.45a5.62 5.62 0 012.18-2.34c.93-.56 2-.84 3.22-.84 1.2 0 2.25.28 3.15.84.9.56 1.58 1.33 2.05 2.31.47.98.7 2.1.7 3.35v.43H23.79z" fill="#D97757"/><circle cx="16" cy="16" r="15" stroke="#D97757" stroke-width="1.5" fill="none"/></svg>',
+      description: 'Anthropic - XML structure, données en haut',
       category: 'text'
     },
     chatgpt: {
       name: 'ChatGPT',
-      color: '#10A37F',
-      letter: 'G',
+      svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="15" stroke="#10A37F" stroke-width="1.5" fill="none"/><path d="M16 6.5a5.5 5.5 0 014.9 3.01 5.5 5.5 0 012.1 10.28v.01a5.5 5.5 0 01-7 3.02A5.5 5.5 0 017.9 12.54 5.5 5.5 0 0116 6.5zm0 1.5a4 4 0 00-3.46 6l.22.38-.1.43a4 4 0 001.08 3.78l.34.3-.08.44a4 4 0 003.92 1.45l.44-.08.3.34a4 4 0 003.78-1.08l.3-.34.44.08a4 4 0 001.45-3.92l-.08-.44.34-.3A4 4 0 0022.54 11l-.38.22-.43-.1A4 4 0 0016 8z" fill="#10A37F"/></svg>',
       description: 'OpenAI - Developer role, strict mode',
       category: 'text'
     },
     gemini: {
       name: 'Gemini',
-      color: '#4285F4',
-      letter: 'G',
+      svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="15" stroke="#4285F4" stroke-width="1.5" fill="none"/><path d="M16 4C16 4 26 10 26 16C26 22 16 28 16 28C16 28 6 22 6 16C6 10 16 4 16 4Z" fill="url(#gemini-grad)"/><defs><linearGradient id="gemini-grad" x1="6" y1="4" x2="26" y2="28"><stop stop-color="#4285F4"/><stop offset="0.5" stop-color="#9B72CB"/><stop offset="1" stop-color="#D96570"/></linearGradient></defs></svg>',
       description: 'Google - Anchor context, grounding',
       category: 'text'
     },
     perplexity: {
       name: 'Perplexity',
-      color: '#20B2AA',
-      letter: 'P',
+      svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="15" stroke="#20B2AA" stroke-width="1.5" fill="none"/><path d="M16 6l8 5v10l-8 5-8-5V11l8-5z" stroke="#20B2AA" stroke-width="1.5" fill="none"/><path d="M16 6v20M8 11l16 10M24 11L8 21" stroke="#20B2AA" stroke-width="1"/></svg>',
       description: 'Search-first, zero-shot',
       category: 'text'
     }
   },
 
-  // --- Image / Video model configs ---
+  // --- Image model configs ---
   imageConfig: {
     flux: {
       name: 'FLUX',
-      color: '#FF6B35',
-      letter: 'F',
-      description: 'Image - Sujets detailles, style, negative prompts',
+      svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="15" stroke="#FF6B35" stroke-width="1.5" fill="none"/><path d="M8 12h4l4 8h4l4-8" stroke="#FF6B35" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 20h4l4-8h4l4 8" stroke="#FF6B35" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"/></svg>',
+      description: 'Image - Sujets détaillés, style, negative prompts',
       category: 'image'
     },
     'stable-diffusion': {
       name: 'Stable Diffusion',
-      color: '#A855F7',
-      letter: 'S',
+      svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="15" stroke="#A855F7" stroke-width="1.5" fill="none"/><circle cx="16" cy="16" r="6" stroke="#A855F7" stroke-width="1.5" fill="none"/><circle cx="16" cy="16" r="2" fill="#A855F7"/><path d="M16 4v6M16 22v6M4 16h6M22 16h6M7.8 7.8l4.2 4.2M20 20l4.2 4.2M7.8 24.2l4.2-4.2M20 12l4.2-4.2" stroke="#A855F7" stroke-width="1" opacity="0.5"/></svg>',
       description: 'Image - Quality keywords, composition, lighting',
       category: 'image'
     },
+    'nano-banana': {
+      name: 'Nano Banana',
+      svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="15" stroke="#FBBC04" stroke-width="1.5" fill="none"/><path d="M16 7c-5 0-9 4-9 9s4 9 9 9 9-4 9-9" stroke="#FBBC04" stroke-width="2" stroke-linecap="round"/><path d="M25 16c0-5-4-9-9-9" stroke="#4285F4" stroke-width="2" stroke-linecap="round"/><circle cx="13" cy="15" r="1.5" fill="#FBBC04"/><circle cx="19" cy="15" r="1.5" fill="#4285F4"/><path d="M13 20c1.5 1.5 4.5 1.5 6 0" stroke="#34A853" stroke-width="1.5" stroke-linecap="round"/></svg>',
+      description: 'Google - Text rendering, thinking, search grounding',
+      category: 'image'
+    }
+  },
+
+  // --- Video model configs ---
+  videoConfig: {
     veo: {
       name: 'Veo (Google)',
-      color: '#EA4335',
-      letter: 'V',
-      description: 'Video - Camera movement, cinematique, tempo',
+      svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="15" stroke="#EA4335" stroke-width="1.5" fill="none"/><path d="M12 10v12l10-6-10-6z" fill="#EA4335"/></svg>',
+      description: 'Vidéo - Camera movement, cinématique, tempo',
       category: 'video'
     }
   },
@@ -72,16 +75,14 @@ const LLMAdapters = {
    * Main entry - adapt a prompt for a target model
    */
   adapt(promptData, targetModel) {
-    // Text LLMs
     switch (targetModel) {
       case 'claude': return this.formatForClaude(promptData);
       case 'chatgpt': return this.formatForChatGPT(promptData);
       case 'gemini': return this.formatForGemini(promptData);
       case 'perplexity': return this.formatForPerplexity(promptData);
-      // Image models
       case 'flux': return this.formatForFLUX(promptData);
       case 'stable-diffusion': return this.formatForStableDiffusion(promptData);
-      // Video models
+      case 'nano-banana': return this.formatForNanoBanana(promptData);
       case 'veo': return this.formatForVeo(promptData);
       default: return this.formatGeneric(promptData);
     }
@@ -91,14 +92,9 @@ const LLMAdapters = {
   // TEXT LLMs
   // ===================================================================
 
-  /**
-   * CLAUDE: XML tags, data on top, question at bottom
-   * Sources: prompt-ingenieur-roman (techniques-fondamentales, specifiques-par-modele)
-   */
   formatForClaude(data) {
     let systemPrompt = data.persona;
 
-    // Progressive Disclosure: enrich based on complexity (antigravity skill)
     if (data.raw.complexity === 'advanced' || data.raw.complexity === 'expert') {
       systemPrompt += '\n\nInstruction Hierarchy (priorite decroissante) :\n';
       systemPrompt += '1. Contraintes de securite et de format (toujours respecter)\n';
@@ -109,7 +105,6 @@ const LLMAdapters = {
 
     let userPrompt = '';
 
-    // Context block (top)
     userPrompt += '<context>\n';
     if (data.raw.domain) userPrompt += `  <domain>${data.raw.domain}</domain>\n`;
     if (data.raw.audience) userPrompt += `  <audience>${this._audienceLabel(data.raw.audience)}</audience>\n`;
@@ -117,7 +112,6 @@ const LLMAdapters = {
     if (data.raw.outputLanguage) userPrompt += `  <langue>${data.raw.outputLanguage}</langue>\n`;
     userPrompt += '</context>\n\n';
 
-    // Examples (if any)
     if (data.examples && data.examples.length > 0) {
       userPrompt += '<examples>\n';
       data.examples.forEach((ex) => {
@@ -129,30 +123,33 @@ const LLMAdapters = {
       userPrompt += '</examples>\n\n';
     }
 
-    // Input description
     if (data.raw.inputDescription) {
       userPrompt += `<input_description>\n${data.raw.inputDescription}\n</input_description>\n\n`;
     }
 
-    // Chain of thought
     if (data.chainOfThought) {
       userPrompt += '<instructions>\nRaisonne etape par etape dans des balises <thinking> avant de fournir ta reponse finale.\n</instructions>\n\n';
     }
 
-    // Task (bottom - key Claude pattern)
+    // Inject smart answers if available
+    if (data.raw.smartAnswers && data.raw.smartAnswers.length > 0) {
+      userPrompt += '<optimization_context>\n';
+      data.raw.smartAnswers.forEach(qa => {
+        userPrompt += `  <detail>\n    <question>${qa.question}</question>\n    <answer>${qa.answer}</answer>\n  </detail>\n`;
+      });
+      userPrompt += '</optimization_context>\n\n';
+    }
+
     userPrompt += `<task>\n${data.task}\n</task>\n\n`;
 
-    // Constraints
     if (data.raw.constraints) {
       userPrompt += `<constraints>\n${data.raw.constraints}\n</constraints>\n\n`;
     }
 
-    // Error recovery (antigravity skill - expert level)
     if (data.raw.complexity === 'expert') {
       userPrompt += `<error_recovery>\nSi tu n'es pas certain d'une reponse, indique ton niveau de confiance et propose des alternatives.\nSi les instructions semblent contradictoires, signale l'ambiguite avant de repondre.\n</error_recovery>\n\n`;
     }
 
-    // Output format
     userPrompt += `<output_format>\n${data.format}\n</output_format>`;
 
     const notes = [
@@ -167,15 +164,10 @@ const LLMAdapters = {
     return { systemPrompt, userPrompt, notes };
   },
 
-  /**
-   * CHATGPT: Developer role, no personality padding, strict mode
-   * Sources: prompt-ingenieur-roman (specifiques-par-modele), antigravity (progressive disclosure)
-   */
   formatForChatGPT(data) {
     let systemPrompt = '';
     systemPrompt += data.persona + '\n\n';
 
-    // Rules section
     systemPrompt += 'Regles :\n';
     if (data.raw.tone) systemPrompt += `- Ton : ${data.raw.tone}\n`;
     if (data.raw.audience) systemPrompt += `- Public cible : ${this._audienceLabel(data.raw.audience)}\n`;
@@ -185,7 +177,6 @@ const LLMAdapters = {
       systemPrompt += `- ${data.raw.constraints.split('\n').join('\n- ')}\n`;
     }
 
-    // Verbosity control for complex tasks
     const complexTasks = ['code', 'analyse', 'agent', 'classification'];
     if (complexTasks.includes(data.raw.taskType)) {
       systemPrompt += '\nControle de verbosity :\n';
@@ -193,7 +184,6 @@ const LLMAdapters = {
       systemPrompt += '- Ne pas s\'etendre au-dela du scope de la question.\n';
     }
 
-    // Progressive Disclosure (antigravity skill)
     if (data.raw.complexity === 'expert') {
       systemPrompt += '\nGestion des erreurs :\n';
       systemPrompt += '- Si l\'input est ambigu, demande une clarification avant de repondre.\n';
@@ -219,6 +209,14 @@ const LLMAdapters = {
       userPrompt += `Donnees d'entree : ${data.raw.inputDescription}\n\n`;
     }
 
+    if (data.raw.smartAnswers && data.raw.smartAnswers.length > 0) {
+      userPrompt += 'Contexte supplementaire :\n';
+      data.raw.smartAnswers.forEach(qa => {
+        userPrompt += `- ${qa.question} : ${qa.answer}\n`;
+      });
+      userPrompt += '\n';
+    }
+
     if (data.chainOfThought) {
       userPrompt += 'Reflechis etape par etape avant de repondre.\n\n';
     }
@@ -234,16 +232,11 @@ const LLMAdapters = {
     return { systemPrompt, userPrompt, notes };
   },
 
-  /**
-   * GEMINI: Anchor context, grounding clauses, positive action verbs
-   * Sources: prompt-ingenieur-roman (specifiques-par-modele)
-   */
   formatForGemini(data) {
     let systemPrompt = data.persona;
 
     let userPrompt = '';
 
-    // Data on TOP (Gemini anchor pattern)
     if (data.raw.domain) userPrompt += `Domaine : ${data.raw.domain}\n`;
     if (data.raw.audience) userPrompt += `Public cible : ${this._audienceLabel(data.raw.audience)}\n`;
     if (data.raw.outputLanguage) userPrompt += `Langue : ${data.raw.outputLanguage}\n`;
@@ -263,7 +256,14 @@ const LLMAdapters = {
       userPrompt += `Donnees d'entree fournies : ${data.raw.inputDescription}\n\n`;
     }
 
-    // Grounding clause for factual tasks
+    if (data.raw.smartAnswers && data.raw.smartAnswers.length > 0) {
+      userPrompt += 'Details supplementaires :\n';
+      data.raw.smartAnswers.forEach(qa => {
+        userPrompt += `- ${qa.question} : ${qa.answer}\n`;
+      });
+      userPrompt += '\n';
+    }
+
     const factualTasks = ['analyse', 'extraction', 'classification', 'qa-rag'];
     if (factualTasks.includes(data.raw.taskType)) {
       userPrompt += 'IMPORTANT : Reponds UNIQUEMENT sur la base des informations fournies. Ne recours pas a tes connaissances pre-entrainees.\n\n';
@@ -273,7 +273,6 @@ const LLMAdapters = {
       userPrompt += 'Detaille ton raisonnement etape par etape avant de fournir ta reponse finale.\n\n';
     }
 
-    // Anchor question at the BOTTOM (Gemini pattern)
     userPrompt += `D'apres le contexte fourni ci-dessus, execute la tache suivante :\n\n`;
     userPrompt += data.task + '\n\n';
 
@@ -291,10 +290,6 @@ const LLMAdapters = {
     return { systemPrompt, userPrompt, notes };
   },
 
-  /**
-   * PERPLEXITY: Search-first, instructions = restitution only, no few-shot
-   * Sources: prompt-ingenieur-roman (specifiques-par-modele)
-   */
   formatForPerplexity(data) {
     let systemPrompt = '';
     systemPrompt += data.persona + '\n\n';
@@ -314,6 +309,13 @@ const LLMAdapters = {
       userPrompt += `\n\nContexte supplementaire : ${data.raw.inputDescription}`;
     }
 
+    if (data.raw.smartAnswers && data.raw.smartAnswers.length > 0) {
+      userPrompt += '\n\nDetails additionnels :\n';
+      data.raw.smartAnswers.forEach(qa => {
+        userPrompt += `- ${qa.answer}\n`;
+      });
+    }
+
     const warnings = [];
     if (data.examples && data.examples.length > 0) {
       warnings.push('Les exemples few-shot ont ete retires : ils polluent les sous-recherches de Perplexity.');
@@ -330,39 +332,23 @@ const LLMAdapters = {
   },
 
   // ===================================================================
-  // IMAGE MODELS (from prompt-engineering-inference skill)
-  // Structure: [Subject] + [Style] + [Composition] + [Lighting] + [Technical]
+  // IMAGE MODELS
   // ===================================================================
 
-  /**
-   * FLUX: Detailed subjects, style references, lighting keywords, negative prompts
-   * Source: prompt-engineering-inference (Image Generation Prompting)
-   */
   formatForFLUX(data) {
     const img = data.raw.imageData || {};
     let prompt = '';
 
-    // Subject (most important)
     prompt += img.subject || data.task;
-
-    // Style
     if (img.style) prompt += `, ${this._imageStyleLabel(img.style)}`;
-
-    // Composition
     if (img.composition) prompt += `, ${this._compositionLabel(img.composition)}`;
-
-    // Lighting
     if (img.lighting) prompt += `, ${this._lightingLabel(img.lighting)}`;
 
-    // Quality keywords
     const quality = img.quality || 'standard';
     if (quality === 'high') prompt += ', 8K, ultra detailed, sharp focus, high resolution';
     if (quality === 'masterpiece') prompt += ', masterpiece, best quality, 8K, ultra detailed, sharp focus, professional';
 
     let negativePrompt = img.negative || 'blurry, distorted, low quality, watermark, text';
-
-    const systemPrompt = `Prompt positif (ce que vous voulez voir)`;
-    const userPrompt = prompt;
 
     const notes = [
       'Format FLUX : [Sujet detaille], [Style], [Composition], [Eclairage], [Qualite]',
@@ -372,38 +358,23 @@ const LLMAdapters = {
       'Iterative refinement : Commencez large, puis ajoutez style, puis technique.'
     ];
 
-    return { systemPrompt, userPrompt, notes };
+    return { systemPrompt: 'Prompt positif (ce que vous voulez voir)', userPrompt: prompt, notes };
   },
 
-  /**
-   * STABLE DIFFUSION: Quality keywords, composition, lighting, negative prompts
-   * Source: prompt-engineering-inference (Image Generation Prompting)
-   */
   formatForStableDiffusion(data) {
     const img = data.raw.imageData || {};
     let prompt = '';
 
-    // Subject
     prompt += img.subject || data.task;
-
-    // Style
     if (img.style) prompt += `, ${this._imageStyleLabel(img.style)}`;
-
-    // Composition
     if (img.composition) prompt += `, ${this._compositionLabel(img.composition)}`;
-
-    // Lighting
     if (img.lighting) prompt += `, ${this._lightingLabel(img.lighting)}`;
 
-    // Quality (Stable Diffusion specific weights)
     const quality = img.quality || 'standard';
     if (quality === 'high') prompt += ', (high quality:1.2), (detailed:1.3), sharp focus, 8K';
     if (quality === 'masterpiece') prompt += ', (masterpiece:1.4), (best quality:1.4), (ultra detailed:1.3), sharp focus, 8K, professional photography';
 
     let negativePrompt = img.negative || 'blurry, distorted, extra limbs, extra fingers, deformed, bad anatomy, watermark, text, low quality, cartoon, anime';
-
-    const systemPrompt = 'Prompt positif (poids entre parentheses pour emphase)';
-    const userPrompt = prompt;
 
     const notes = [
       'Format SD : [Sujet], [Style], [Composition], [Eclairage], [Qualite avec poids]',
@@ -413,39 +384,56 @@ const LLMAdapters = {
       'Evitez les prompts trop longs (>75 tokens) - priorisez les elements importants.'
     ];
 
-    return { systemPrompt, userPrompt, notes };
+    return { systemPrompt: 'Prompt positif (poids entre parentheses pour emphase)', userPrompt: prompt, notes };
+  },
+
+  /**
+   * NANO BANANA: Google's image generation model (Gemini-based)
+   * Strengths: text rendering, thinking process, search grounding, reference images
+   */
+  formatForNanoBanana(data) {
+    const img = data.raw.imageData || {};
+    let prompt = '';
+
+    prompt += img.subject || data.task;
+    if (img.style) prompt += `, ${this._imageStyleLabel(img.style)}`;
+    if (img.composition) prompt += `, ${this._compositionLabel(img.composition)}`;
+    if (img.lighting) prompt += `, ${this._lightingLabel(img.lighting)}`;
+
+    const quality = img.quality || 'standard';
+    if (quality === 'high') prompt += ', high quality, detailed, sharp, professional';
+    if (quality === 'masterpiece') prompt += ', highest quality, extremely detailed, masterful composition, professional';
+
+    // Nano Banana uses natural language well - add descriptive text
+    if (img.negative) {
+      prompt += `. Avoid: ${img.negative}`;
+    }
+
+    const notes = [
+      'Nano Banana (Gemini Image) utilise le langage naturel - ecrivez des descriptions completes.',
+      'Point fort : Texte parfaitement rendu dans les images (logos, phrases longues).',
+      'Le mode "Thinking" raisonne avant de generer, corrigeant les erreurs logiques.',
+      'Search Grounding : peut generer des diagrammes factuellement corrects.',
+      'Supporte jusqu\'a 14 images de reference pour maintenir la coherence visuelle.',
+      'Conseil : Decrivez le contexte et l\'intention, pas juste les elements visuels.'
+    ];
+
+    return { systemPrompt: 'Prompt image (langage naturel descriptif)', userPrompt: prompt, notes };
   },
 
   // ===================================================================
-  // VIDEO MODELS (from prompt-engineering-inference skill)
-  // Structure: [Shot Type] + [Subject] + [Action] + [Setting] + [Style]
+  // VIDEO MODELS
   // ===================================================================
 
-  /**
-   * VEO: Camera movement, cinematic language, action descriptions, temporal context
-   * Source: prompt-engineering-inference (Video Prompting)
-   */
   formatForVeo(data) {
     const vid = data.raw.videoData || {};
     let prompt = '';
 
-    // Shot type
     if (vid.shot) prompt += `${this._shotLabel(vid.shot)}, `;
-
-    // Subject + action
     prompt += vid.subject || data.task;
-
-    // Style
     if (vid.style) prompt += `, ${vid.style} style`;
-
-    // Temporal
     if (vid.tempo) prompt += `, ${this._tempoLabel(vid.tempo)}`;
-
-    // Always add cinematic quality for Veo
     prompt += ', cinematic quality, professional cinematography';
-
-    const systemPrompt = 'Prompt video (langage cinematographique)';
-    const userPrompt = prompt;
 
     const notes = [
       'Format Veo : [Type plan], [Sujet + action], [Decor], [Style], [Tempo]',
@@ -455,7 +443,19 @@ const LLMAdapters = {
       'Veo comprend le langage naturel - ecrivez comme un script de film.'
     ];
 
-    return { systemPrompt, userPrompt, notes };
+    return { systemPrompt: 'Prompt video (langage cinematographique)', userPrompt: prompt, notes };
+  },
+
+  // ===================================================================
+  // GENERIC FALLBACK
+  // ===================================================================
+
+  formatGeneric(data) {
+    return {
+      systemPrompt: data.persona,
+      userPrompt: data.task,
+      notes: ['Format generique - aucune optimisation specifique appliquee.']
+    };
   },
 
   // ===================================================================
@@ -464,18 +464,24 @@ const LLMAdapters = {
 
   /**
    * Render the full readable preview for a model adaptation
+   * @param {string} mode - 'split' (default) or 'combined'
    */
-  renderPreview(adapted, targetModel) {
-    const allConfigs = { ...this.config, ...this.imageConfig };
+  renderPreview(adapted, targetModel, mode) {
+    mode = mode || 'split';
+    const allConfigs = { ...this.config, ...this.imageConfig, ...this.videoConfig };
     const cfg = allConfigs[targetModel] || { name: targetModel };
     const isMedia = cfg.category === 'image' || cfg.category === 'video';
 
     let md = '';
     md += `# Prompt optimise pour ${cfg.name}\n\n`;
 
-    if (isMedia) {
+    if (mode === 'combined' || isMedia) {
       md += `## Prompt\n\n`;
-      md += '```\n' + adapted.userPrompt + '\n```\n\n';
+      if (isMedia) {
+        md += '```\n' + adapted.userPrompt + '\n```\n\n';
+      } else {
+        md += '```\n' + adapted.systemPrompt + '\n\n---\n\n' + adapted.userPrompt + '\n```\n\n';
+      }
     } else {
       md += `## System Prompt\n\n`;
       md += '```\n' + adapted.systemPrompt + '\n```\n\n';
@@ -493,9 +499,6 @@ const LLMAdapters = {
     return md;
   },
 
-  /**
-   * Get raw prompt text (for copy/download)
-   */
   getRawPrompt(adapted) {
     let text = '';
     text += '=== SYSTEM PROMPT ===\n\n';
@@ -513,7 +516,15 @@ const LLMAdapters = {
       technical: 'Technique / Developpeurs',
       business: 'Business / Management',
       academic: 'Academique / Recherche',
-      children: 'Enfants / Debutants'
+      children: 'Enfants / Debutants',
+      marketers: 'Marketeurs / Marketing',
+      designers: 'Designers / UX',
+      students: 'Etudiants',
+      executives: 'Dirigeants / C-Level',
+      hr: 'RH / Recruteurs',
+      sales: 'Commerciaux / Ventes',
+      legal: 'Juristes / Legal',
+      medical: 'Professionnels de sante'
     };
     return labels[value] || value;
   },

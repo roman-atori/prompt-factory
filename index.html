@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Prompt Factory - Createur de Prompts LLM</title>
+  <title>PROMPT FACTORY - Createur de Prompts LLM</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -16,9 +16,9 @@
 
   <!-- HEADER -->
   <header class="app-header">
-    <div class="logo">
-      <h1>Prompt Factory</h1>
-      <span class="tagline">Creez des prompts parfaits, etape par etape</span>
+    <div class="logo" id="logo-home" style="cursor:pointer">
+      <h1>PROMPT FACTORY</h1>
+      <span class="tagline">Créez des prompts parfaits, étape par étape</span>
     </div>
     <button class="btn-settings" id="btn-settings" aria-label="Parametres">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
@@ -39,30 +39,39 @@
     <!-- STEP 1: LLM Selection -->
     <section class="wizard-step active" id="step-1" data-step="1">
       <div class="step-card">
-        <h2>Quel(s) modeles ciblez-vous ?</h2>
-        <p class="step-description">Selectionnez un ou plusieurs modeles. Le prompt sera optimise pour chacun.</p>
+        <h2>Quel(s) modèles ciblez-vous ?</h2>
+        <p class="step-description">Sélectionnez un ou plusieurs modèles. Le prompt sera optimisé pour chacun.</p>
 
-        <h3 class="grid-label">LLMs (texte)</h3>
+        <h3 class="grid-label">LLM (texte)</h3>
         <div class="llm-grid" id="llm-grid"></div>
 
-        <h3 class="grid-label">Modeles Image / Video</h3>
+        <h3 class="grid-label">Modèles image</h3>
         <div class="llm-grid" id="image-grid"></div>
 
-        <p class="validation-error hidden" id="error-step1">Veuillez selectionner au moins un modele.</p>
+        <h3 class="grid-label">Modèles vidéo</h3>
+        <div class="llm-grid" id="video-grid"></div>
+
+        <p class="validation-error hidden" id="error-step1">Veuillez sélectionner au moins un modèle.</p>
       </div>
     </section>
 
-    <!-- STEP 2: Task Type -->
+    <!-- STEP 2: Task Type + Persona -->
     <section class="wizard-step" id="step-2" data-step="2">
       <div class="step-card">
-        <h2>Type de tache</h2>
-        <p class="step-description">Que doit faire le LLM ? Choisissez la categorie la plus proche.</p>
+        <h2>Type de tâche</h2>
+        <p class="step-description">Que doit faire le LLM ? Choisissez la catégorie la plus proche.</p>
         <div class="task-grid" id="task-grid"></div>
         <div class="custom-task hidden" id="custom-task">
-          <label for="custom-task-input">Decrivez votre type de tache :</label>
-          <input type="text" id="custom-task-input" placeholder="Ex: Generation d'images, Roleplay...">
+          <label for="custom-task-input">Décrivez votre type de tâche :</label>
+          <input type="text" id="custom-task-input" placeholder="Ex: Génération d'images, Roleplay...">
         </div>
-        <p class="validation-error hidden" id="error-step2">Veuillez selectionner un type de tache.</p>
+        <p class="validation-error hidden" id="error-step2">Veuillez sélectionner un type de tâche.</p>
+
+        <div class="form-group" style="margin-top: var(--space-xl);">
+          <label for="persona">Rôle / Persona (optionnel)</label>
+          <input type="text" id="persona" placeholder='Ex: "Tu es un développeur senior Python avec 10 ans d&#39;expérience"'>
+          <p class="helper-text">Si vide, un rôle sera généré automatiquement selon le type de tâche.</p>
+        </div>
       </div>
     </section>
 
@@ -70,11 +79,29 @@
     <section class="wizard-step" id="step-3" data-step="3">
       <div class="step-card">
         <h2>Contexte et audience</h2>
-        <p class="step-description">Qui va lire la reponse ? Dans quel contexte ?</p>
+        <p class="step-description">Qui va lire la réponse ? Dans quel contexte ?</p>
 
         <div class="form-group">
           <label for="domain">Domaine / Sujet</label>
-          <input type="text" id="domain" placeholder="Ex: Marketing digital, Medecine, Droit...">
+          <select id="domain">
+            <option value="">-- Choisir un domaine --</option>
+            <option value="marketing-digital">Marketing digital</option>
+            <option value="developpement-web">Développement web</option>
+            <option value="data-science">Data Science / IA</option>
+            <option value="finance">Finance / Comptabilité</option>
+            <option value="droit">Droit</option>
+            <option value="medecine">Médecine / Santé</option>
+            <option value="education">Éducation</option>
+            <option value="ecommerce">E-commerce</option>
+            <option value="rh">Ressources humaines</option>
+            <option value="design">Design / UX</option>
+            <option value="journalisme">Journalisme / Rédaction</option>
+            <option value="immobilier">Immobilier</option>
+            <option value="logistique">Logistique / Supply chain</option>
+            <option value="cybersecurite">Cybersécurité</option>
+            <option value="autre">Autre...</option>
+          </select>
+          <input type="text" id="domain-autre" class="autre-input hidden" placeholder="Précisez votre domaine...">
         </div>
 
         <div class="form-row">
@@ -83,34 +110,66 @@
             <select id="audience">
               <option value="">-- Choisir --</option>
               <option value="general">Grand public</option>
-              <option value="technical">Technique / Developpeurs</option>
+              <option value="technical">Développeurs / Technique</option>
               <option value="business">Business / Management</option>
-              <option value="academic">Academique / Recherche</option>
-              <option value="children">Enfants / Debutants</option>
+              <option value="academic">Académique / Recherche</option>
+              <option value="children">Enfants / Débutants</option>
+              <option value="marketers">Marketeurs</option>
+              <option value="designers">Designers</option>
+              <option value="students">Étudiants</option>
+              <option value="executives">Dirigeants / C-Level</option>
+              <option value="hr">RH / Recruteurs</option>
+              <option value="sales">Commerciaux / Ventes</option>
+              <option value="legal">Juristes</option>
+              <option value="medical">Professionnels de santé</option>
+              <option value="autre">Autre...</option>
             </select>
+            <input type="text" id="audience-autre" class="autre-input hidden" placeholder="Précisez le public cible...">
           </div>
           <div class="form-group">
             <label for="output-language">Langue de sortie</label>
             <select id="output-language">
-              <option value="francais" selected>Francais</option>
+              <option value="francais" selected>Français</option>
               <option value="english">English</option>
-              <option value="espanol">Espanol</option>
+              <option value="espanol">Español</option>
               <option value="deutsch">Deutsch</option>
               <option value="italiano">Italiano</option>
-              <option value="portugues">Portugues</option>
+              <option value="portugues">Português</option>
+              <option value="arabic">العربية (Arabe)</option>
+              <option value="chinese">中文 (Chinois)</option>
+              <option value="japanese">日本語 (Japonais)</option>
+              <option value="korean">한국어 (Coréen)</option>
+              <option value="russian">Русский (Russe)</option>
+              <option value="dutch">Nederlands (Néerlandais)</option>
+              <option value="polish">Polski (Polonais)</option>
+              <option value="turkish">Türkçe (Turc)</option>
+              <option value="hindi">हिन्दी (Hindi)</option>
+              <option value="autre">Autre...</option>
             </select>
+            <input type="text" id="language-autre" class="autre-input hidden" placeholder="Précisez la langue...">
           </div>
         </div>
 
         <div class="form-group">
-          <label>Ton</label>
-          <div class="radio-pills" id="tone-group">
-            <label class="pill"><input type="radio" name="tone" value="professionnel" checked><span>Professionnel</span></label>
-            <label class="pill"><input type="radio" name="tone" value="decontracte"><span>Decontracte</span></label>
-            <label class="pill"><input type="radio" name="tone" value="creatif"><span>Creatif</span></label>
-            <label class="pill"><input type="radio" name="tone" value="technique"><span>Technique</span></label>
-            <label class="pill"><input type="radio" name="tone" value="pedagogique"><span>Pedagogique</span></label>
-          </div>
+          <label for="tone">Ton</label>
+          <select id="tone">
+            <option value="professionnel" selected>Professionnel</option>
+            <option value="decontracte">Décontracté</option>
+            <option value="creatif">Créatif</option>
+            <option value="technique">Technique</option>
+            <option value="pedagogique">Pédagogique</option>
+            <option value="formel">Formel</option>
+            <option value="humoristique">Humoristique</option>
+            <option value="empathique">Empathique</option>
+            <option value="autoritaire">Autoritaire</option>
+            <option value="narratif">Narratif</option>
+            <option value="analytique">Analytique</option>
+            <option value="diplomatique">Diplomatique</option>
+            <option value="inspirant">Inspirant</option>
+            <option value="neutre">Neutre / Objectif</option>
+            <option value="autre">Autre...</option>
+          </select>
+          <input type="text" id="tone-autre" class="autre-input hidden" placeholder="Précisez le ton souhaité...">
         </div>
       </div>
     </section>
@@ -118,36 +177,47 @@
     <!-- STEP 4: Task Details -->
     <section class="wizard-step" id="step-4" data-step="4">
       <div class="step-card">
-        <h2>Details de la tache</h2>
-        <p class="step-description">Decrivez precisement ce que le prompt doit accomplir.</p>
+        <h2>Détails de la tâche</h2>
+        <p class="step-description">Décrivez précisément ce que le prompt doit accomplir.</p>
 
         <!-- Standard text LLM fields -->
         <div id="text-fields">
           <div class="form-group">
-            <label for="task-description">Description detaillee de la tache *</label>
-            <textarea id="task-description" rows="4" placeholder="Que doit faire le LLM exactement ? Soyez aussi precis que possible."></textarea>
+            <label for="task-description">Description détaillée de la tâche *</label>
+            <textarea id="task-description" rows="4" placeholder="Que doit faire le LLM exactement ? Soyez aussi précis que possible."></textarea>
           </div>
 
           <div class="form-group">
-            <label for="input-description">Description des donnees d'entree</label>
-            <textarea id="input-description" rows="3" placeholder="Que va recevoir le LLM comme input ? (texte, JSON, URL, image...)"></textarea>
+            <label for="input-description">Données d'entrée fournies au LLM</label>
+            <textarea id="input-description" rows="3" placeholder="Décrivez ce que vous fournirez au LLM en entrée. Ex : 'Un texte de 500 mots à résumer', 'Des données CSV avec 3 colonnes', 'Un email client auquel répondre'..."></textarea>
+            <p class="helper-text">Quel type de contenu le LLM recevra-t-il pour travailler ? Cela aide à adapter le prompt.</p>
           </div>
 
           <div class="form-group">
-            <label>Format de sortie souhaite</label>
-            <div class="radio-pills" id="output-format-group">
-              <label class="pill"><input type="radio" name="output-format" value="texte" checked><span>Texte libre</span></label>
-              <label class="pill"><input type="radio" name="output-format" value="json"><span>JSON</span></label>
-              <label class="pill"><input type="radio" name="output-format" value="markdown"><span>Markdown</span></label>
-              <label class="pill"><input type="radio" name="output-format" value="code"><span>Code</span></label>
-              <label class="pill"><input type="radio" name="output-format" value="liste"><span>Liste</span></label>
-              <label class="pill"><input type="radio" name="output-format" value="tableau"><span>Tableau</span></label>
-            </div>
+            <label for="output-format">Format de sortie souhaité</label>
+            <select id="output-format">
+              <option value="texte" selected>Texte libre</option>
+              <option value="json">JSON</option>
+              <option value="markdown">Markdown</option>
+              <option value="code">Code source</option>
+              <option value="liste">Liste à puces</option>
+              <option value="tableau">Tableau</option>
+              <option value="html">HTML</option>
+              <option value="csv">CSV</option>
+              <option value="xml">XML</option>
+              <option value="yaml">YAML</option>
+              <option value="email">Email</option>
+              <option value="article">Article</option>
+              <option value="rapport">Rapport</option>
+              <option value="presentation">Présentation (slides)</option>
+              <option value="autre">Autre...</option>
+            </select>
+            <input type="text" id="output-format-autre" class="autre-input hidden" placeholder="Précisez le format de sortie...">
           </div>
 
           <div class="form-group">
-            <label for="constraints">Contraintes specifiques (optionnel)</label>
-            <textarea id="constraints" rows="3" placeholder="Ex: Maximum 500 mots, toujours citer les sources, ne pas inventer de donnees..."></textarea>
+            <label for="constraints">Contraintes spécifiques (optionnel)</label>
+            <textarea id="constraints" rows="3" placeholder="Ex: Maximum 500 mots, toujours citer les sources, ne pas inventer de données..."></textarea>
           </div>
         </div>
 
@@ -155,8 +225,8 @@
         <div id="image-fields" class="hidden">
           <div class="form-group">
             <label for="img-subject">Sujet principal *</label>
-            <textarea id="img-subject" rows="2" placeholder="Ex: Un chat siamois assis sur un rebord de fenetre, regardant la pluie"></textarea>
-            <p class="helper-text">Soyez precis : remplacez "un chat" par sa race, sa pose, son expression.</p>
+            <textarea id="img-subject" rows="2" placeholder="Ex: Un chat siamois assis sur un rebord de fenêtre, regardant la pluie"></textarea>
+            <p class="helper-text">Soyez précis : remplacez "un chat" par sa race, sa pose, son expression.</p>
           </div>
 
           <div class="form-row">
@@ -164,28 +234,28 @@
               <label for="img-style">Style artistique</label>
               <select id="img-style">
                 <option value="">-- Choisir --</option>
-                <option value="photorealistic">Photorealiste</option>
+                <option value="photorealistic">Photoréaliste</option>
                 <option value="digital-art">Art digital</option>
-                <option value="oil-painting">Peinture a l'huile</option>
+                <option value="oil-painting">Peinture à l'huile</option>
                 <option value="watercolor">Aquarelle</option>
                 <option value="anime">Anime / Manga</option>
                 <option value="3d-render">Rendu 3D</option>
                 <option value="pencil-sketch">Dessin au crayon</option>
                 <option value="vintage-photo">Photo vintage (Kodak Portra 400)</option>
                 <option value="minimalist">Minimaliste</option>
-                <option value="surrealist">Surrealiste</option>
+                <option value="surrealist">Surréaliste</option>
               </select>
             </div>
             <div class="form-group">
-              <label for="img-lighting">Eclairage</label>
+              <label for="img-lighting">Éclairage</label>
               <select id="img-lighting">
                 <option value="">-- Choisir --</option>
-                <option value="natural">Lumiere naturelle</option>
+                <option value="natural">Lumière naturelle</option>
                 <option value="golden-hour">Golden hour</option>
-                <option value="studio">Eclairage studio</option>
+                <option value="studio">Éclairage studio</option>
                 <option value="dramatic">Clair-obscur dramatique</option>
-                <option value="neon">Neon / Cyberpunk</option>
-                <option value="soft">Lumiere douce diffuse</option>
+                <option value="neon">Néon / Cyberpunk</option>
+                <option value="soft">Lumière douce diffuse</option>
                 <option value="backlit">Contre-jour</option>
               </select>
             </div>
@@ -196,17 +266,17 @@
               <label for="img-composition">Composition</label>
               <select id="img-composition">
                 <option value="">-- Choisir --</option>
-                <option value="rule-of-thirds">Regle des tiers</option>
-                <option value="centered">Centre / Symetrique</option>
+                <option value="rule-of-thirds">Règle des tiers</option>
+                <option value="centered">Centré / Symétrique</option>
                 <option value="close-up">Gros plan</option>
                 <option value="wide-shot">Plan large</option>
-                <option value="birds-eye">Vue aerienne</option>
-                <option value="low-angle">Contre-plongee</option>
+                <option value="birds-eye">Vue aérienne</option>
+                <option value="low-angle">Contre-plongée</option>
                 <option value="macro">Macro</option>
               </select>
             </div>
             <div class="form-group">
-              <label for="img-quality">Qualite</label>
+              <label for="img-quality">Qualité</label>
               <div class="radio-pills">
                 <label class="pill"><input type="radio" name="img-quality" value="standard" checked><span>Standard</span></label>
                 <label class="pill"><input type="radio" name="img-quality" value="high"><span>Haute (8K, ultra detailed)</span></label>
@@ -216,9 +286,9 @@
           </div>
 
           <div class="form-group">
-            <label for="img-negative">Prompts negatifs (a eviter)</label>
+            <label for="img-negative">Prompts négatifs (à éviter)</label>
             <textarea id="img-negative" rows="2" placeholder="Ex: blurry, distorted, extra limbs, watermark, text, low quality"></textarea>
-            <p class="helper-text">Elements a exclure de l'image generee. Separez par des virgules.</p>
+            <p class="helper-text">Éléments à exclure de l'image générée. Séparez par des virgules.</p>
           </div>
         </div>
 
@@ -226,7 +296,7 @@
         <div id="video-fields" class="hidden">
           <div class="form-group">
             <label for="vid-subject">Sujet et action *</label>
-            <textarea id="vid-subject" rows="2" placeholder="Ex: Une femme marche dans une rue de Tokyo la nuit, les enseignes neon se refletent sur le sol mouille"></textarea>
+            <textarea id="vid-subject" rows="2" placeholder="Ex: Une femme marche dans une rue de Tokyo la nuit, les enseignes néon se reflètent sur le sol mouillé"></textarea>
           </div>
 
           <div class="form-row">
@@ -247,46 +317,40 @@
               <select id="vid-tempo">
                 <option value="">-- Choisir --</option>
                 <option value="slow-motion">Ralenti (slow motion)</option>
-                <option value="real-time">Temps reel</option>
+                <option value="real-time">Temps réel</option>
                 <option value="timelapse">Timelapse</option>
                 <option value="quick-cuts">Montage rapide</option>
-                <option value="continuous">Plan-sequence continu</option>
+                <option value="continuous">Plan-séquence continu</option>
               </select>
             </div>
           </div>
 
           <div class="form-group">
-            <label for="vid-style">Style cinematographique</label>
-            <input type="text" id="vid-style" placeholder="Ex: Cinematique, film noir, documentaire, anime...">
+            <label for="vid-style">Style cinématographique</label>
+            <input type="text" id="vid-style" placeholder="Ex: Cinématique, film noir, documentaire, anime...">
           </div>
         </div>
 
-        <p class="validation-error hidden" id="error-step4">Veuillez decrire la tache.</p>
+        <p class="validation-error hidden" id="error-step4">Veuillez décrire la tâche.</p>
       </div>
     </section>
 
     <!-- STEP 5: Advanced Options -->
     <section class="wizard-step" id="step-5" data-step="5">
       <div class="step-card">
-        <h2>Options avancees</h2>
+        <h2>Options avancées</h2>
         <p class="step-description">Affinez votre prompt avec des techniques de prompt engineering.</p>
 
         <!-- Complexity level (Progressive Disclosure from antigravity skill) -->
         <div class="form-group">
-          <label>Niveau de complexite du prompt</label>
-          <p class="helper-text" style="margin-bottom: var(--space-sm);">Determine la profondeur et la sophistication du prompt genere.</p>
+          <label>Niveau de complexité du prompt</label>
+          <p class="helper-text" style="margin-bottom: var(--space-sm);">Détermine la profondeur et la sophistication du prompt généré.</p>
           <div class="radio-pills" id="complexity-group">
             <label class="pill"><input type="radio" name="complexity" value="basic" checked><span>Basique</span></label>
-            <label class="pill"><input type="radio" name="complexity" value="intermediate"><span>Intermediaire</span></label>
-            <label class="pill"><input type="radio" name="complexity" value="advanced"><span>Avance</span></label>
+            <label class="pill"><input type="radio" name="complexity" value="intermediate"><span>Intermédiaire</span></label>
+            <label class="pill"><input type="radio" name="complexity" value="advanced"><span>Avancé</span></label>
             <label class="pill"><input type="radio" name="complexity" value="expert"><span>Expert</span></label>
           </div>
-        </div>
-
-        <div class="form-group">
-          <label for="persona">Role / Persona (optionnel)</label>
-          <input type="text" id="persona" placeholder='Ex: "Tu es un developpeur senior Python avec 10 ans d experience"'>
-          <p class="helper-text">Si vide, un role sera genere automatiquement selon le type de tache.</p>
         </div>
 
         <!-- Few-shot toggle -->
@@ -298,7 +362,7 @@
             </label>
             <div class="toggle-label">
               <span>Exemples few-shot</span>
-              <span class="helper-text">Fournir des exemples d'entree/sortie pour guider le LLM</span>
+              <span class="helper-text">Montrez au LLM des exemples concrets de ce que vous attendez. L'« Entrée » est ce que l'utilisateur envoie au LLM, la « Sortie » est la réponse idéale que le LLM devrait produire.</span>
             </div>
             <span class="badge hidden" id="few-shot-count">0</span>
           </div>
@@ -316,40 +380,74 @@
               <span class="toggle-slider"></span>
             </label>
             <div class="toggle-label">
-              <span>Raisonnement etape par etape (Chain-of-Thought)</span>
-              <span class="helper-text">Demande au LLM de raisonner avant de repondre</span>
+              <span>Raisonnement étape par étape (Chain-of-Thought)</span>
+              <span class="helper-text">Demande au LLM de « réfléchir à voix haute » avant de répondre. Améliore significativement la qualité pour les tâches complexes : mathématiques, code, analyse logique, résolution de problèmes.</span>
             </div>
-            <span class="badge badge-green hidden" id="cot-recommendation">Recommande</span>
+            <span class="badge badge-green hidden" id="cot-recommendation">Recommandé</span>
           </div>
         </div>
 
         <!-- Output length -->
         <div class="form-group">
-          <label>Longueur de sortie preferee</label>
+          <label>Longueur de sortie préférée</label>
           <div class="radio-pills" id="length-group">
             <label class="pill"><input type="radio" name="output-length" value="court"><span>Court</span></label>
             <label class="pill"><input type="radio" name="output-length" value="moyen" checked><span>Moyen</span></label>
             <label class="pill"><input type="radio" name="output-length" value="long"><span>Long</span></label>
-            <label class="pill"><input type="radio" name="output-length" value="illimite"><span>Illimite</span></label>
+            <label class="pill"><input type="radio" name="output-length" value="illimite"><span>Illimité</span></label>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- STEP 6: Preview & Refinement -->
+    <!-- STEP 6: Smart Optimization Questions (NEW) -->
     <section class="wizard-step" id="step-6" data-step="6">
+      <div class="step-card">
+        <h2>Questions d'optimisation</h2>
+        <p class="step-description">L'IA analyse vos réponses et pose des questions pour affiner votre prompt.</p>
+
+        <div id="smart-questions-container">
+          <div class="ai-status" id="questions-loading">
+            <div class="spinner"></div>
+            <span>Analyse de vos réponses en cours...</span>
+          </div>
+        </div>
+
+        <div id="smart-questions-list" class="hidden"></div>
+
+        <div id="smart-questions-error" class="hidden">
+          <div class="info-box info-box-warning">
+            <p>Impossible de générer les questions. Vérifiez votre clé API dans les paramètres.</p>
+            <button class="btn-secondary btn-sm" id="retry-questions" style="margin-top: var(--space-sm);">Réessayer</button>
+          </div>
+        </div>
+
+        <div id="smart-questions-skip" class="hidden">
+          <div class="info-box">
+            <p>Pour bénéficier des questions d'optimisation IA, configurez votre clé API dans les paramètres.</p>
+          </div>
+        </div>
+
+        <p class="helper-text" style="margin-top: var(--space-lg);">Ces questions sont optionnelles. Vos réponses enrichiront le prompt final.</p>
+      </div>
+    </section>
+
+    <!-- STEP 7: Preview & Refinement -->
+    <section class="wizard-step" id="step-7" data-step="7">
       <div class="step-card step-card-wide">
-        <h2>Apercu et optimisation</h2>
+        <h2>Aperçu du prompt</h2>
 
         <!-- LLM Tabs -->
         <div class="llm-tabs" id="llm-tabs"></div>
 
-        <!-- Preview area -->
+        <!-- Preview mode tabs -->
         <div class="preview-container">
           <div class="preview-toolbar">
             <div class="toolbar-tabs">
-              <button class="toolbar-tab active" id="btn-preview-mode">Apercu</button>
-              <button class="toolbar-tab" id="btn-edit-mode">Editer</button>
+              <button class="toolbar-tab active" id="btn-mode-split">System + User</button>
+              <button class="toolbar-tab" id="btn-mode-combined">Prompt combiné</button>
+              <span class="toolbar-separator">|</span>
+              <button class="toolbar-tab" id="btn-edit-mode">Éditer</button>
             </div>
             <div class="token-counter" id="token-counter"></div>
           </div>
@@ -358,14 +456,67 @@
           <div class="prompt-preview" id="prompt-preview"></div>
         </div>
 
+        <!-- Feedback zone -->
+        <div class="form-group" style="margin-top: var(--space-lg);">
+          <label for="preview-feedback">Pas satisfait ? Décrivez les modifications souhaitées :</label>
+          <textarea id="preview-feedback" rows="3" placeholder="Ex : 'Rendre le ton plus formel', 'Ajouter une section sur les erreurs possibles', 'Simplifier les instructions'..."></textarea>
+          <button class="btn-secondary btn-sm" id="btn-apply-feedback" style="margin-top: var(--space-sm);">Régénérer avec les modifications</button>
+        </div>
+
         <!-- Action buttons -->
         <div class="action-bar">
+          <button class="btn-secondary" id="btn-copy">Copier</button>
+          <button class="btn-secondary" id="btn-download">Télécharger .md</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 8: AI Optimization (side-by-side) -->
+    <section class="wizard-step" id="step-8" data-step="8">
+      <div class="step-card step-card-wide">
+        <h2>Optimisation IA</h2>
+        <p class="step-description">Comparez votre prompt original avec la version optimisée par l'IA.</p>
+
+        <!-- LLM Tabs -->
+        <div class="llm-tabs" id="llm-tabs-optimize"></div>
+
+        <div class="comparison-container" id="comparison-container">
+          <div class="comparison-panel">
+            <div class="comparison-header">
+              <h3>Prompt original</h3>
+              <div class="token-counter" id="token-counter-original"></div>
+            </div>
+            <div class="prompt-preview comparison-preview" id="preview-original"></div>
+            <div class="comparison-actions">
+              <button class="btn-secondary btn-sm" id="btn-copy-original">Copier</button>
+              <button class="btn-secondary btn-sm" id="btn-download-original">Télécharger .md</button>
+            </div>
+          </div>
+
+          <div class="comparison-divider"></div>
+
+          <div class="comparison-panel">
+            <div class="comparison-header">
+              <h3>Prompt optimisé par l'IA</h3>
+              <div class="token-counter" id="token-counter-optimized"></div>
+            </div>
+            <div class="prompt-preview comparison-preview" id="preview-optimized">
+              <div class="comparison-placeholder">
+                <p>Cliquez sur « Lancer l'optimisation » pour voir le résultat ici.</p>
+              </div>
+            </div>
+            <div class="comparison-actions">
+              <button class="btn-secondary btn-sm" id="btn-copy-optimized" disabled>Copier</button>
+              <button class="btn-secondary btn-sm" id="btn-download-optimized" disabled>Télécharger .md</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-bar" style="margin-top: var(--space-lg);">
           <button class="btn-primary btn-with-icon" id="btn-optimize" disabled>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-            Optimiser avec l'IA
+            Lancer l'optimisation IA
           </button>
-          <button class="btn-secondary" id="btn-copy">Copier</button>
-          <button class="btn-secondary" id="btn-download">Telecharger .md</button>
         </div>
 
         <!-- AI loading -->
@@ -380,7 +531,7 @@
 
   <!-- NAVIGATION -->
   <nav class="wizard-nav" id="wizard-nav">
-    <button class="btn-secondary" id="btn-prev" disabled>Precedent</button>
+    <button class="btn-secondary" id="btn-prev" disabled>Précédent</button>
     <button class="btn-primary" id="btn-next">Suivant</button>
   </nav>
 
@@ -388,25 +539,25 @@
   <div class="modal-overlay hidden" id="settings-modal">
     <div class="modal">
       <div class="modal-header">
-        <h3>Parametres</h3>
+        <h3>Paramètres</h3>
         <button class="btn-close" id="btn-close-settings">&times;</button>
       </div>
       <div class="modal-body">
         <div class="form-group">
-          <label for="api-key">Cle API Anthropic (pour l'optimisation IA)</label>
+          <label for="api-key">Clé API Anthropic (pour l'optimisation IA)</label>
           <div class="input-row">
             <input type="password" id="api-key" placeholder="sk-ant-api03-...">
             <button class="btn-secondary btn-sm" id="toggle-key-visibility">Afficher</button>
           </div>
-          <p class="helper-text">Votre cle est stockee uniquement dans votre navigateur. Elle n'est jamais enregistree sur nos serveurs.</p>
+          <p class="helper-text">Votre clé est stockée uniquement dans votre navigateur. Elle n'est jamais enregistrée sur nos serveurs.</p>
         </div>
         <div class="form-group">
-          <button class="btn-secondary btn-sm" id="btn-save-key">Sauvegarder la cle</button>
+          <button class="btn-secondary btn-sm" id="btn-save-key">Sauvegarder la clé</button>
         </div>
         <hr>
         <div class="form-group">
-          <label>Donnees locales</label>
-          <button class="btn-danger btn-sm" id="btn-clear-history">Effacer toutes les donnees</button>
+          <label>Données locales</label>
+          <button class="btn-danger btn-sm" id="btn-clear-history">Effacer toutes les données</button>
         </div>
       </div>
     </div>
