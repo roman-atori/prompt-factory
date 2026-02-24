@@ -91,7 +91,7 @@ ${prompt}
 Retourne UNIQUEMENT le prompt optimise, sans aucun commentaire.`;
 
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-6-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 4096,
       temperature: 0.3,
       system: REFINE_SYSTEM_PROMPT,
