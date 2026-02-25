@@ -17,6 +17,8 @@ const App = {
   step8Modes: { original: 'split', optimized: 'split' },
   step8Formats: { original: 'rendered', optimized: 'rendered' },
   smartQuestionsGenerated: false,
+  tutorialActive: false,
+  tutorialStepIndex: 0,
 
   // ===== INITIALIZATION =====
 
@@ -108,6 +110,7 @@ const App = {
     this.updateStepIndicators();
     this.updateNavigation();
     this._updateGuideHighlights();
+    if (this.tutorialActive) this._closeTutorial();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   },
 
@@ -944,6 +947,7 @@ const App = {
     localStorage.removeItem('pf_openai_key');
     localStorage.removeItem('pf_preferences');
     localStorage.removeItem('pf_history');
+    localStorage.removeItem('pf_tutorial_seen');
     this.checkApiKey();
     UIHelpers.showToast('Toutes les donnees ont ete effacees.', 'info');
   },
@@ -1346,12 +1350,169 @@ const App = {
     });
   },
 
+  // ===== INTERACTIVE TUTORIAL =====
+
+  _getTutorialStepsForCurrentStep() {
+    switch (this.currentStep) {
+      case 1:
+        return [
+          { selector: '#llm-grid', text: 'Choisissez un ou plusieurs modeles de texte (Claude, ChatGPT, Gemini...). Vous pouvez en selectionner plusieurs.' },
+          { selector: '#image-grid', text: 'Optionnel : selectionnez un modele de generation d\'images (FLUX, Midjourney...).' },
+          { selector: '#video-grid', text: 'Optionnel : selectionnez un modele de generation video (Veo, Runway...).' },
+          { selector: '#vibe-grid', text: 'Optionnel : selectionnez un outil de vibe coding (Claude Code, Cursor...).' }
+        ];
+      case 2:
+        return [
+          { selector: '#task-grid', text: 'Selectionnez le type de tache que votre prompt doit accomplir. Cela adapte la structure du prompt genere.' },
+          { selector: '#persona', text: 'Optionnel : decrivez le role ou la persona que le LLM doit adopter (ex: "Expert SEO avec 10 ans d\'experience").' }
+        ];
+      case 3:
+        return [
+          { selector: '#ms-domain', text: 'Choisissez le domaine d\'application. Vous pouvez en selectionner plusieurs ou ajouter un domaine personnalise.' },
+          { selector: '#ms-audience', text: 'A qui s\'adresse la reponse du LLM ? Selectionnez un ou plusieurs publics cibles.' },
+          { selector: '#ms-output-language', text: 'Dans quelle(s) langue(s) le LLM doit-il repondre ?' },
+          { selector: '#ms-tone', text: 'Quel ton adopter ? Professionnel, decontracte, technique... Vous pouvez combiner.' }
+        ];
+      case 4:
+        return [
+          { selector: '#task-description', text: 'Decrivez precisement ce que le LLM doit faire. Plus c\'est precis, meilleur sera le prompt genere.' },
+          { selector: '#input-description', text: 'Decrivez les donnees que vous fournirez au LLM en entree. Vous pouvez aussi joindre un fichier.' },
+          { selector: '#output-format', text: 'Choisissez le format de sortie souhaite : JSON, Markdown, code, tableau...' }
+        ];
+      case 5:
+        return [
+          { selector: '#complexity-group', text: 'Choisissez le niveau de sophistication du prompt. "Expert" ajoute la gestion d\'erreurs et les niveaux de confiance.' },
+          { selector: '#few-shot-header', text: 'Activez pour fournir des exemples concrets au LLM (few-shot learning). Ameliore la precision.' },
+          { selector: '#cot-toggle', text: 'Activez le raisonnement etape par etape (Chain-of-Thought). Recommande pour les taches complexes.' }
+        ];
+      default:
+        return [];
+    }
+  },
+
+  startTutorial() {
+    const steps = this._getTutorialStepsForCurrentStep();
+    if (steps.length === 0) {
+      UIHelpers.showToast('Pas de guide disponible pour cette etape.', 'info');
+      return;
+    }
+
+    this.tutorialActive = true;
+    this.tutorialStepIndex = 0;
+    document.getElementById('tutorial-overlay').classList.remove('hidden');
+    this._showTutorialStep(0);
+  },
+
+  _showTutorialStep(index) {
+    const steps = this._getTutorialStepsForCurrentStep();
+    if (index < 0 || index >= steps.length) {
+      this._closeTutorial();
+      return;
+    }
+
+    this.tutorialStepIndex = index;
+    const step = steps[index];
+    const target = document.querySelector(step.selector);
+
+    if (!target) {
+      // Skip if element not found
+      if (index < steps.length - 1) {
+        this._showTutorialStep(index + 1);
+      } else {
+        this._closeTutorial();
+      }
+      return;
+    }
+
+    // Scroll target into view
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    // Wait for scroll to finish
+    setTimeout(() => {
+      const rect = target.getBoundingClientRect();
+      const pad = 8;
+
+      // Position spotlight
+      const spotlight = document.getElementById('tutorial-spotlight');
+      spotlight.style.top = (rect.top - pad) + 'px';
+      spotlight.style.left = (rect.left - pad) + 'px';
+      spotlight.style.width = (rect.width + pad * 2) + 'px';
+      spotlight.style.height = (rect.height + pad * 2) + 'px';
+
+      // Position tooltip
+      const tooltip = document.getElementById('tutorial-tooltip');
+      const text = document.getElementById('tutorial-text');
+      const counter = document.getElementById('tutorial-counter');
+      const btnPrev = document.getElementById('tutorial-btn-prev');
+      const btnNext = document.getElementById('tutorial-btn-next');
+
+      text.textContent = step.text;
+      counter.textContent = `${index + 1} / ${steps.length}`;
+
+      // Show/hide prev button
+      btnPrev.classList.toggle('hidden', index === 0);
+
+      // Change next button text on last step
+      btnNext.textContent = (index === steps.length - 1) ? 'Terminer' : 'Suivant';
+
+      // Determine tooltip position (below or above target)
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const tooltipHeight = 140; // approximate
+
+      tooltip.classList.remove('arrow-top', 'arrow-bottom');
+
+      if (spaceBelow > tooltipHeight + 20) {
+        // Place below
+        tooltip.style.top = (rect.bottom + pad + 12) + 'px';
+        tooltip.style.bottom = '';
+        tooltip.classList.add('arrow-top');
+      } else {
+        // Place above
+        tooltip.style.top = '';
+        tooltip.style.bottom = (window.innerHeight - rect.top + pad + 12) + 'px';
+        tooltip.classList.add('arrow-bottom');
+      }
+
+      // Horizontal: align with target left, but keep in viewport
+      let leftPos = rect.left;
+      const tooltipWidth = 360;
+      if (leftPos + tooltipWidth > window.innerWidth - 16) {
+        leftPos = window.innerWidth - tooltipWidth - 16;
+      }
+      if (leftPos < 16) leftPos = 16;
+      tooltip.style.left = leftPos + 'px';
+      tooltip.style.right = '';
+
+    }, 350);
+  },
+
+  _closeTutorial() {
+    this.tutorialActive = false;
+    this.tutorialStepIndex = 0;
+    document.getElementById('tutorial-overlay').classList.add('hidden');
+    localStorage.setItem('pf_tutorial_seen', 'true');
+  },
+
   // ===== EVENT BINDING =====
 
   bindEvents() {
     // Navigation
     document.getElementById('btn-next').addEventListener('click', () => this.nextStep());
     document.getElementById('btn-prev').addEventListener('click', () => this.prevStep());
+
+    // Tutorial
+    document.getElementById('btn-guide').addEventListener('click', () => this.startTutorial());
+    document.getElementById('tutorial-backdrop').addEventListener('click', () => this._closeTutorial());
+    document.getElementById('tutorial-btn-skip').addEventListener('click', () => this._closeTutorial());
+    document.getElementById('tutorial-btn-prev').addEventListener('click', () => this._showTutorialStep(this.tutorialStepIndex - 1));
+    document.getElementById('tutorial-btn-next').addEventListener('click', () => {
+      const steps = this._getTutorialStepsForCurrentStep();
+      if (this.tutorialStepIndex >= steps.length - 1) {
+        this._closeTutorial();
+      } else {
+        this._showTutorialStep(this.tutorialStepIndex + 1);
+      }
+    });
 
     // Logo -> full reset (like page refresh)
     document.getElementById('logo-home').addEventListener('click', (e) => {
@@ -1587,7 +1748,10 @@ const App = {
         e.preventDefault();
         this.nextStep();
       }
-      if (e.key === 'Escape') this.closeSettings();
+      if (e.key === 'Escape') {
+        if (this.tutorialActive) this._closeTutorial();
+        else this.closeSettings();
+      }
     });
   }
 };

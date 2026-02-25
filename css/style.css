@@ -1488,7 +1488,160 @@ textarea {
 }
 
 /* ============================================
-   18. RESPONSIVE
+   19. TUTORIAL OVERLAY
+   ============================================ */
+.btn-guide {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.btn-guide:hover {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.tutorial-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 900;
+  pointer-events: none;
+}
+
+.tutorial-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 900;
+  pointer-events: auto;
+  animation: fadeIn 0.2s ease;
+}
+
+.tutorial-spotlight {
+  position: absolute;
+  z-index: 901;
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  transition: all 0.3s ease;
+}
+
+.tutorial-tooltip {
+  position: absolute;
+  z-index: 902;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+  max-width: 360px;
+  min-width: 260px;
+  pointer-events: auto;
+  animation: slideUp 0.25s ease;
+}
+
+.tutorial-tooltip::before {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: var(--color-surface);
+  transform: rotate(45deg);
+}
+
+.tutorial-tooltip.arrow-top::before {
+  top: -6px;
+  left: 24px;
+}
+
+.tutorial-tooltip.arrow-bottom::before {
+  bottom: -6px;
+  left: 24px;
+}
+
+.tutorial-text {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--color-text);
+  margin-bottom: var(--space-md);
+}
+
+.tutorial-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.tutorial-counter {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.tutorial-nav-buttons {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.tutorial-btn {
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: none;
+}
+
+.tutorial-btn-skip {
+  background: none;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
+
+.tutorial-btn-skip:hover {
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+}
+
+.tutorial-btn-prev {
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+}
+
+.tutorial-btn-prev:hover {
+  background: var(--color-border);
+}
+
+.tutorial-btn-next {
+  background: var(--color-primary);
+  color: white;
+}
+
+.tutorial-btn-next:hover {
+  background: var(--color-primary-hover);
+}
+
+/* ============================================
+   20. RESPONSIVE
    ============================================ */
 @media (max-width: 768px) {
   .app-header {
