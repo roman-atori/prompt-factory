@@ -796,6 +796,10 @@ const App = {
   },
 
   _setComparisonFormat(panel, format) {
+    // Save editor content before switching format
+    if (this.step8Modes[panel] === 'edit') {
+      this._saveEditorContent(panel);
+    }
     this.step8Formats[panel] = format;
 
     // Update button label
@@ -816,10 +820,26 @@ const App = {
   },
 
   _setComparisonMode(panel, mode) {
+    // Save editor content before leaving edit mode
+    const prevMode = this.step8Modes[panel];
+    if (prevMode === 'edit') {
+      this._saveEditorContent(panel);
+    }
     this.step8Modes[panel] = mode;
     const llmKey = this.activeLLMTabOptimize;
     if (llmKey) {
       this._renderComparisonPanel(panel, llmKey);
+    }
+  },
+
+  _saveEditorContent(panel) {
+    const editor = document.getElementById(`editor-${panel}`);
+    if (!editor || editor.classList.contains('hidden')) return;
+    const llmKey = this.activeLLMTabOptimize;
+    if (!llmKey) return;
+
+    if (panel === 'optimized' && this.generatedPrompts[llmKey]) {
+      this.generatedPrompts[llmKey]._optimizedMarkdown = editor.value;
     }
   },
 

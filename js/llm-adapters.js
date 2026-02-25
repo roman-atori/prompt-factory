@@ -36,6 +36,12 @@ const LLMAdapters = {
       icon: 'img/logos/perplexity.png',
       description: 'Search-first, zero-shot',
       category: 'text'
+    },
+    notebooklm: {
+      name: 'NotebookLM',
+      icon: 'img/logos/notebooklm.png',
+      description: 'Google - Sources-first, synthese, podcast',
+      category: 'text'
     }
   },
 
@@ -90,6 +96,7 @@ const LLMAdapters = {
       case 'chatgpt': return this.formatForChatGPT(promptData);
       case 'gemini': return this.formatForGemini(promptData);
       case 'perplexity': return this.formatForPerplexity(promptData);
+      case 'notebooklm': return this.formatForNotebookLM(promptData);
       case 'flux': return this.formatForFLUX(promptData);
       case 'stable-diffusion': return this.formatForStableDiffusion(promptData);
       case 'nano-banana': return this.formatForNanoBanana(promptData);
@@ -337,6 +344,51 @@ const LLMAdapters = {
       'Parametres recommandes : search_domain_filter, search_context_size: "large".',
       'Ne demandez JAMAIS d\'inclure des URLs dans la reponse textuelle.',
       ...warnings
+    ];
+
+    return { systemPrompt, userPrompt, notes };
+  },
+
+  formatForNotebookLM(data) {
+    let systemPrompt = data.persona + '\n\n';
+    systemPrompt += 'Tu travailles dans Google NotebookLM. Principes :\n';
+    systemPrompt += '- Base tes reponses UNIQUEMENT sur les sources fournies\n';
+    systemPrompt += '- Cite les passages pertinents des sources\n';
+    systemPrompt += '- Synthetise les informations de maniere structuree\n';
+    if (data.raw.outputLanguage) systemPrompt += `- Langue de reponse : ${data.raw.outputLanguage}\n`;
+    if (data.raw.tone) systemPrompt += `- Ton : ${data.raw.tone}\n`;
+    if (data.raw.audience) systemPrompt += `- Public : ${this._audienceLabel(data.raw.audience)}\n`;
+    systemPrompt += `- Format de sortie : ${data.format}\n`;
+    if (data.raw.constraints) {
+      systemPrompt += data.raw.constraints.split('\n').map(c => `- ${c}`).join('\n') + '\n';
+    }
+
+    let userPrompt = '';
+    if (data.raw.domain) userPrompt += `[Domaine : ${data.raw.domain}] `;
+    userPrompt += data.task;
+    if (data.raw.inputDescription) {
+      userPrompt += `\n\nSources a analyser : ${data.raw.inputDescription}`;
+    }
+
+    if (data.raw.smartAnswers && data.raw.smartAnswers.length > 0) {
+      userPrompt += '\n\nPrecisions :\n';
+      data.raw.smartAnswers.forEach(qa => {
+        userPrompt += `- ${qa.answer}\n`;
+      });
+    }
+
+    if (data.examples && data.examples.length > 0) {
+      userPrompt += '\n\nExemples attendus :\n';
+      data.examples.forEach((ex, i) => {
+        userPrompt += `Exemple ${i + 1} :\nEntree : ${ex.input}\nSortie : ${ex.output}\n\n`;
+      });
+    }
+
+    const notes = [
+      'NotebookLM fonctionne exclusivement a partir de sources uploadees.',
+      'Uploadez vos documents (PDF, sites web, textes) comme sources avant d\'utiliser ce prompt.',
+      'Le prompt sera utilise comme "Note" dans l\'interface NotebookLM.',
+      'Pour generer un podcast Audio Overview, ajoutez des instructions de personnalisation.'
     ];
 
     return { systemPrompt, userPrompt, notes };
