@@ -1114,6 +1114,55 @@ textarea {
   padding: var(--space-sm) var(--space-md);
   border-top: 1px solid var(--color-border);
   background: var(--color-bg);
+  align-items: center;
+}
+
+.comparison-notes {
+  padding: var(--space-md);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.comparison-notes h4 {
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: var(--space-sm);
+  color: var(--color-text);
+}
+
+.optimize-notes-content {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.optimize-notes-content ul {
+  padding-left: var(--space-md);
+  margin: 0;
+}
+
+.optimize-notes-content li {
+  margin-bottom: var(--space-xs);
+}
+
+.comparison-feedback {
+  padding: var(--space-md);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.comparison-feedback label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-bottom: var(--space-xs);
+  color: var(--color-text-muted);
+}
+
+.comparison-feedback textarea {
+  width: 100%;
+  resize: vertical;
+  font-size: 0.85rem;
 }
 
 /* Smart questions (Step 6) */

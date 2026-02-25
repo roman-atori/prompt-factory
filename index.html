@@ -528,21 +528,21 @@
     <section class="wizard-step" id="step-8" data-step="8">
       <div class="step-card step-card-wide">
         <h2>Optimisation IA</h2>
-        <p class="step-description">Comparez votre prompt original avec la version optimisée par l'IA.</p>
+        <p class="step-description">Comparez votre prompt original avec la version optimisee par l'IA.</p>
 
         <!-- LLM Tabs -->
         <div class="llm-tabs" id="llm-tabs-optimize"></div>
 
         <div class="comparison-container" id="comparison-container">
-          <!-- PANEL ORIGINAL -->
+          <!-- PANEL GAUCHE : ORIGINAL -->
           <div class="comparison-panel">
             <div class="comparison-header">
               <h3>Prompt original</h3>
               <div class="comparison-toolbar">
                 <button class="toolbar-tab active" data-panel="original" data-mode="split">System + User</button>
-                <button class="toolbar-tab" data-panel="original" data-mode="combined">Combiné</button>
+                <button class="toolbar-tab" data-panel="original" data-mode="combined">Combine</button>
                 <span class="toolbar-separator">|</span>
-                <button class="toolbar-tab" data-panel="original" data-mode="edit">Éditer</button>
+                <button class="toolbar-tab" data-panel="original" data-mode="edit">Editer</button>
                 <span class="toolbar-separator">|</span>
                 <div class="format-select">
                   <button class="toolbar-tab format-btn" data-panel="original">Rendu &#9662;</button>
@@ -557,30 +557,19 @@
             </div>
             <textarea class="prompt-editor comparison-editor hidden" id="editor-original" rows="15"></textarea>
             <div class="prompt-preview comparison-preview" id="preview-original"></div>
-            <div class="comparison-actions">
-              <button class="btn-secondary btn-sm" id="btn-copy-original">Copier</button>
-              <div class="download-dropdown">
-                <button class="btn-secondary btn-sm" id="btn-download-original">Télécharger</button>
-                <div class="download-menu hidden" id="download-menu-original">
-                  <button class="download-option" data-format="md" data-target="original">.md (Markdown)</button>
-                  <button class="download-option" data-format="txt" data-target="original">.txt (Texte brut)</button>
-                  <button class="download-option" data-format="html" data-target="original">.html (Page web)</button>
-                </div>
-              </div>
-            </div>
           </div>
 
           <div class="comparison-divider"></div>
 
-          <!-- PANEL OPTIMISÉ -->
+          <!-- PANEL DROITE : OPTIMISE -->
           <div class="comparison-panel">
             <div class="comparison-header">
-              <h3>Prompt optimisé par l'IA</h3>
+              <h3>Prompt optimise par l'IA</h3>
               <div class="comparison-toolbar">
                 <button class="toolbar-tab active" data-panel="optimized" data-mode="split">System + User</button>
-                <button class="toolbar-tab" data-panel="optimized" data-mode="combined">Combiné</button>
+                <button class="toolbar-tab" data-panel="optimized" data-mode="combined">Combine</button>
                 <span class="toolbar-separator">|</span>
-                <button class="toolbar-tab" data-panel="optimized" data-mode="edit">Éditer</button>
+                <button class="toolbar-tab" data-panel="optimized" data-mode="edit">Editer</button>
                 <span class="toolbar-separator">|</span>
                 <div class="format-select">
                   <button class="toolbar-tab format-btn" data-panel="optimized">Rendu &#9662;</button>
@@ -596,13 +585,28 @@
             <textarea class="prompt-editor comparison-editor hidden" id="editor-optimized" rows="15"></textarea>
             <div class="prompt-preview comparison-preview" id="preview-optimized">
               <div class="comparison-placeholder">
-                <p>Cliquez sur « Lancer l'optimisation » pour voir le résultat ici.</p>
+                <p>Cliquez sur &laquo; Lancer l'optimisation &raquo; pour voir le resultat ici.</p>
               </div>
             </div>
-            <div class="comparison-actions">
-              <button class="btn-secondary btn-sm" id="btn-copy-optimized" disabled>Copier</button>
+
+            <!-- Notes et recommandations (dans le panneau droit) -->
+            <div class="comparison-notes hidden" id="optimize-notes">
+              <h4>Notes et recommandations</h4>
+              <div class="optimize-notes-content" id="optimize-notes-content"></div>
+            </div>
+
+            <!-- Feedback (dans le panneau droit) -->
+            <div class="comparison-feedback hidden" id="optimize-feedback-zone">
+              <label for="optimize-feedback">Pas satisfait ? Decrivez les modifications souhaitees :</label>
+              <textarea id="optimize-feedback" rows="2" placeholder="Ex : 'Rendre le prompt plus concis', 'Ajouter des exemples'..."></textarea>
+              <button class="btn-secondary btn-sm" id="btn-regenerate" style="margin-top: var(--space-sm);">Regenerer avec les modifications</button>
+            </div>
+
+            <!-- Actions (dans le panneau droit) -->
+            <div class="comparison-actions hidden" id="optimize-actions">
+              <button class="btn-secondary btn-sm" id="btn-copy-optimized">Copier</button>
               <div class="download-dropdown">
-                <button class="btn-secondary btn-sm" id="btn-download-optimized" disabled>Télécharger</button>
+                <button class="btn-secondary btn-sm" id="btn-download-optimized">Telecharger</button>
                 <div class="download-menu hidden" id="download-menu-optimized">
                   <button class="download-option" data-format="md" data-target="optimized">.md (Markdown)</button>
                   <button class="download-option" data-format="txt" data-target="optimized">.txt (Texte brut)</button>
@@ -613,20 +617,14 @@
           </div>
         </div>
 
-        <!-- Feedback zone -->
-        <div class="form-group" style="margin-top: var(--space-lg);">
-          <label for="optimize-feedback">Indications pour l'optimisation IA :</label>
-          <textarea id="optimize-feedback" rows="3" placeholder="Ex : 'Rendre le prompt plus concis', 'Ajouter des exemples', 'Structurer en XML'..."></textarea>
-        </div>
-
-        <div class="action-bar" style="margin-top: var(--space-md);">
+        <!-- Bouton lancer + loading (commun, en bas) -->
+        <div class="action-bar" style="margin-top: var(--space-lg);">
           <button class="btn-primary btn-with-icon" id="btn-optimize" disabled>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
             Lancer l'optimisation IA
           </button>
         </div>
 
-        <!-- AI loading -->
         <div class="ai-status hidden" id="ai-status">
           <div class="spinner"></div>
           <span>Optimisation en cours...</span>

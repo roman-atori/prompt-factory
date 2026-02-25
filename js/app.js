@@ -710,18 +710,39 @@ const App = {
     this._renderComparisonPanel('original', llmKey);
 
     // Check if we have an optimized version
-    if (this.generatedPrompts[llmKey] && this.generatedPrompts[llmKey]._optimized) {
+    const hasOptimized = this.generatedPrompts[llmKey] && this.generatedPrompts[llmKey]._optimized;
+    if (hasOptimized) {
       this._renderComparisonPanel('optimized', llmKey);
-      document.getElementById('btn-copy-optimized').disabled = false;
-      document.getElementById('btn-download-optimized').disabled = false;
+      this._showOptimizeRightPanelSections(llmKey);
     } else {
       document.getElementById('preview-optimized').innerHTML = '<div class="comparison-placeholder"><p>Cliquez sur « Lancer l\'optimisation » pour voir le resultat ici.</p></div>';
       document.getElementById('editor-optimized').classList.add('hidden');
       document.getElementById('preview-optimized').classList.remove('hidden');
       document.getElementById('token-counter-optimized').textContent = '';
-      document.getElementById('btn-copy-optimized').disabled = true;
-      document.getElementById('btn-download-optimized').disabled = true;
+      this._hideOptimizeRightPanelSections();
     }
+  },
+
+  _showOptimizeRightPanelSections(llmKey) {
+    // Show notes if available
+    const notesEl = document.getElementById('optimize-notes');
+    const notesContent = document.getElementById('optimize-notes-content');
+    const notes = this.generatedPrompts[llmKey] && this.generatedPrompts[llmKey]._optimizeNotes;
+    if (notes) {
+      notesContent.innerHTML = UIHelpers.renderMarkdown(notes);
+      notesEl.classList.remove('hidden');
+    } else {
+      notesEl.classList.add('hidden');
+    }
+    // Show feedback + actions
+    document.getElementById('optimize-feedback-zone').classList.remove('hidden');
+    document.getElementById('optimize-actions').classList.remove('hidden');
+  },
+
+  _hideOptimizeRightPanelSections() {
+    document.getElementById('optimize-notes').classList.add('hidden');
+    document.getElementById('optimize-feedback-zone').classList.add('hidden');
+    document.getElementById('optimize-actions').classList.add('hidden');
   },
 
   _renderComparisonPanel(panel, llmKey) {
@@ -847,11 +868,14 @@ const App = {
       }
       this.generatedPrompts[llmKey]._optimized = true;
       this.generatedPrompts[llmKey]._optimizedMarkdown = result.optimizedPrompt;
+      this.generatedPrompts[llmKey]._optimizeNotes = result.notes || '';
 
       // Update right panel using the mode system
       this._renderComparisonPanel('optimized', llmKey);
-      document.getElementById('btn-copy-optimized').disabled = false;
-      document.getElementById('btn-download-optimized').disabled = false;
+      this._showOptimizeRightPanelSections(llmKey);
+
+      // Clear previous feedback
+      document.getElementById('optimize-feedback').value = '';
 
       const providerLabel = result.fallback ? `${result.provider} (secours)` : result.provider;
       UIHelpers.showToast(`Optimise via ${providerLabel} !`, 'success');
@@ -871,19 +895,84 @@ const App = {
 
   _setLoadingState(loading) {
     const btn = document.getElementById('btn-optimize');
+    const btnRegen = document.getElementById('btn-regenerate');
     const status = document.getElementById('ai-status');
 
     if (loading) {
       btn.disabled = true;
       btn.textContent = 'Optimisation...';
+      if (btnRegen) btnRegen.disabled = true;
       status.classList.remove('hidden');
     } else {
-      btn.disabled = !localStorage.getItem('pf_api_key');
+      btn.disabled = !localStorage.getItem('pf_api_key') && !localStorage.getItem('pf_openai_key');
       btn.innerHTML = `
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
         Lancer l'optimisation IA
       `;
+      if (btnRegen) btnRegen.disabled = false;
       status.classList.add('hidden');
+    }
+  },
+
+  async _regenerateWithFeedback() {
+    const feedback = document.getElementById('optimize-feedback').value.trim();
+    if (!feedback) {
+      UIHelpers.showToast('Decrivez les modifications souhaitees avant de regenerer.', 'info');
+      return;
+    }
+
+    const apiKey = localStorage.getItem('pf_api_key');
+    const openaiKey = localStorage.getItem('pf_openai_key');
+    if (!apiKey && !openaiKey) {
+      this.openSettings();
+      UIHelpers.showToast('Configurez au moins une cle API.', 'error');
+      return;
+    }
+
+    const llmKey = this.activeLLMTabOptimize;
+    if (!llmKey || !this.originalPrompts[llmKey]) return;
+
+    // Use the current optimized version as base, with feedback
+    const currentOptimized = this.generatedPrompts[llmKey] && this.generatedPrompts[llmKey]._optimizedMarkdown;
+    const promptToRefine = currentOptimized || LLMAdapters.getRawPrompt(this.originalPrompts[llmKey]);
+    const formData = PromptBuilder.collectFormData();
+
+    this._setLoadingState(true);
+
+    try {
+      const response = await fetch('/api/refine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: promptToRefine + '\n\n---\nFEEDBACK UTILISATEUR : ' + feedback,
+          targetLLM: llmKey,
+          taskType: formData.taskType,
+          complexity: formData.complexity,
+          apiKey,
+          openaiKey
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erreur de regeneration');
+      }
+
+      const result = await response.json();
+
+      this.generatedPrompts[llmKey]._optimizedMarkdown = result.optimizedPrompt;
+      this.generatedPrompts[llmKey]._optimizeNotes = result.notes || '';
+
+      this._renderComparisonPanel('optimized', llmKey);
+      this._showOptimizeRightPanelSections(llmKey);
+      document.getElementById('optimize-feedback').value = '';
+
+      const providerLabel = result.fallback ? `${result.provider} (secours)` : result.provider;
+      UIHelpers.showToast(`Regenere via ${providerLabel} !`, 'success');
+    } catch (error) {
+      UIHelpers.showToast('Erreur : ' + error.message, 'error', 5000);
+    } finally {
+      this._setLoadingState(false);
     }
   },
 
@@ -1672,36 +1761,8 @@ const App = {
     // Step 8: Optimize
     document.getElementById('btn-optimize').addEventListener('click', () => this.optimizeWithAI());
 
-    // Step 8: Copy/Download original
-    document.getElementById('btn-copy-original').addEventListener('click', () => {
-      const llmKey = this.activeLLMTabOptimize;
-      if (llmKey && this.originalPrompts[llmKey]) {
-        const editorEl = document.getElementById('editor-original');
-        const text = (this.step8Modes.original === 'edit' && !editorEl.classList.contains('hidden'))
-          ? editorEl.value
-          : LLMAdapters.getRawPrompt(this.originalPrompts[llmKey]);
-        UIHelpers.copyToClipboard(text).then(() => {
-          UIHelpers.showToast('Prompt original copie !', 'success');
-        });
-      }
-    });
-
-    document.getElementById('btn-download-original').addEventListener('click', (e) => {
-      e.stopPropagation();
-      document.getElementById('download-menu-original').classList.toggle('hidden');
-    });
-
-    document.getElementById('download-menu-original').addEventListener('click', (e) => {
-      const opt = e.target.closest('.download-option');
-      if (!opt) return;
-      const format = opt.dataset.format;
-      const llmKey = this.activeLLMTabOptimize;
-      if (llmKey && this.originalPrompts[llmKey]) {
-        const text = LLMAdapters.getRawPrompt(this.originalPrompts[llmKey]);
-        this._downloadInFormat(text, `prompt-original-${llmKey}`, format);
-      }
-      document.getElementById('download-menu-original').classList.add('hidden');
-    });
+    // Step 8: Regenerate with feedback
+    document.getElementById('btn-regenerate').addEventListener('click', () => this._regenerateWithFeedback());
 
     // Step 8: Copy/Download optimized
     document.getElementById('btn-copy-optimized').addEventListener('click', () => {

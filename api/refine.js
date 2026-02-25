@@ -40,12 +40,20 @@ const REFINE_SYSTEM_PROMPT = `Tu es un expert mondial en prompt engineering, mai
 - Structured output : schema explicite avec champs obligatoires
 - Chain-of-Thought : pour les taches complexes (math, code, analyse)
 
-## Regles de sortie
-- Retourne UNIQUEMENT le prompt ameliore, sans commentaire ni explication
+## Format de sortie OBLIGATOIRE
+Retourne un JSON valide avec exactement 2 champs :
+{
+  "optimizedPrompt": "Le prompt ameliore complet ici",
+  "notes": "3-5 bullet points expliquant les ameliorations cles apportees et pourquoi"
+}
+
+## Regles
 - Conserve la langue d'origine du prompt
 - Ne change JAMAIS le sens ou l'intention - optimise la forme
 - Si le prompt est deja excellent, ameliore des details subtils
-- Pour les prompts image/video, enrichis le vocabulaire visuel et technique`;
+- Pour les prompts image/video, enrichis le vocabulaire visuel et technique
+- Les notes doivent etre concises, en francais, format liste a puces markdown
+- Retourne UNIQUEMENT le JSON, rien d'autre`;
 
 async function callAnthropic(apiKey, systemPrompt, userMessage) {
   const client = new Anthropic({ apiKey });
@@ -108,14 +116,29 @@ Prompt a optimiser :
 ${prompt}
 ---
 
-Retourne UNIQUEMENT le prompt optimise, sans aucun commentaire.`;
+Retourne le JSON avec optimizedPrompt et notes.`;
+
+  function parseResult(rawText) {
+    let text = rawText.trim();
+    if (text.startsWith('```')) {
+      text = text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+    }
+    try {
+      const parsed = JSON.parse(text);
+      return { optimizedPrompt: parsed.optimizedPrompt || text, notes: parsed.notes || '' };
+    } catch {
+      return { optimizedPrompt: text, notes: '' };
+    }
+  }
 
   // Try Anthropic first
   if (apiKey) {
     try {
       const result = await callAnthropic(apiKey, REFINE_SYSTEM_PROMPT, userPrompt);
+      const parsed = parseResult(result.text);
       return res.status(200).json({
-        optimizedPrompt: result.text,
+        optimizedPrompt: parsed.optimizedPrompt,
+        notes: parsed.notes,
         model: result.model,
         inputTokens: result.inputTokens,
         outputTokens: result.outputTokens,
@@ -134,8 +157,10 @@ Retourne UNIQUEMENT le prompt optimise, sans aucun commentaire.`;
   if (openaiKey) {
     try {
       const result = await callOpenAI(openaiKey, REFINE_SYSTEM_PROMPT, userPrompt);
+      const parsed = parseResult(result.text);
       return res.status(200).json({
-        optimizedPrompt: result.text,
+        optimizedPrompt: parsed.optimizedPrompt,
+        notes: parsed.notes,
         model: result.model,
         inputTokens: result.inputTokens,
         outputTokens: result.outputTokens,
