@@ -759,6 +759,16 @@ const App = {
 
   // ===== GUIDE HIGHLIGHTS (Permanent) =====
 
+  _highlightIfEmpty(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el.tagName === 'SELECT') {
+      if (!el.value || el.value === '') el.classList.add('guide-highlight');
+    } else {
+      if (!el.value.trim()) el.classList.add('guide-highlight');
+    }
+  },
+
   _updateGuideHighlights() {
     // Clear all previous highlights
     document.querySelectorAll('.guide-highlight, .guide-highlight-grid').forEach(el => {
@@ -778,6 +788,14 @@ const App = {
         if (!hasTask) {
           document.getElementById('task-grid').classList.add('guide-highlight-grid');
         }
+        this._highlightIfEmpty('persona');
+        break;
+      }
+      case 3: {
+        this._highlightIfEmpty('domain');
+        this._highlightIfEmpty('audience');
+        this._highlightIfEmpty('output-language');
+        this._highlightIfEmpty('tone');
         break;
       }
       case 4: {
@@ -787,16 +805,22 @@ const App = {
         const hasVideo = PromptBuilder.hasVideoModel(selected);
 
         if (hasText) {
-          const el = document.getElementById('task-description');
-          if (el && !el.value.trim()) el.classList.add('guide-highlight');
+          this._highlightIfEmpty('task-description');
+          this._highlightIfEmpty('input-description');
+          this._highlightIfEmpty('output-format');
+          this._highlightIfEmpty('constraints');
         }
         if (hasImage) {
-          const el = document.getElementById('img-subject');
-          if (el && !el.value.trim()) el.classList.add('guide-highlight');
+          this._highlightIfEmpty('img-subject');
+          this._highlightIfEmpty('img-style');
+          this._highlightIfEmpty('img-lighting');
+          this._highlightIfEmpty('img-composition');
         }
         if (hasVideo) {
-          const el = document.getElementById('vid-subject');
-          if (el && !el.value.trim()) el.classList.add('guide-highlight');
+          this._highlightIfEmpty('vid-subject');
+          this._highlightIfEmpty('vid-shot');
+          this._highlightIfEmpty('vid-tempo');
+          this._highlightIfEmpty('vid-style');
         }
         break;
       }
@@ -813,13 +837,17 @@ const App = {
       }
     });
 
-    // Remove field highlight on input (step 4)
-    ['task-description', 'img-subject', 'vid-subject'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) {
-        el.addEventListener('input', () => {
-          if (el.value.trim()) el.classList.remove('guide-highlight');
-        });
+    // Remove field highlight on input/change for all text fields
+    document.addEventListener('input', (e) => {
+      if (e.target.classList.contains('guide-highlight')) {
+        if (e.target.value.trim()) e.target.classList.remove('guide-highlight');
+      }
+    });
+
+    // Remove field highlight on select change
+    document.addEventListener('change', (e) => {
+      if (e.target.classList.contains('guide-highlight') && e.target.tagName === 'SELECT') {
+        if (e.target.value) e.target.classList.remove('guide-highlight');
       }
     });
   },
