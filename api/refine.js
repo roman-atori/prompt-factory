@@ -1,13 +1,8 @@
 const Anthropic = require('@anthropic-ai/sdk');
+const OpenAI = require('openai');
 
 /**
- * System prompt for AI refinement - enriched with knowledge from ALL 5 prompt engineering skills:
- *
- * 1. prompt-ingenieur-roman: PTCF framework, 10 golden rules, XML for Claude
- * 2. prompt-engineering-patterns: Template architecture, few-shot strategies, optimization
- * 3. prompt-engineering-antigravity: Progressive Disclosure, Instruction Hierarchy, Error Recovery
- * 4. prompt-engineering-inference: Image/Video prompting (FLUX, SD, Veo), iterative refinement
- * 5. enhance-prompt: 4-step enhancement pipeline, UI/UX vocabulary, adjective palettes
+ * System prompt for AI refinement - enriched with knowledge from ALL 5 prompt engineering skills
  */
 const REFINE_SYSTEM_PROMPT = `Tu es un expert mondial en prompt engineering, maitrisant les techniques pour TOUS les types de modeles IA (LLMs, generateurs d'images, generateurs de videos).
 
@@ -52,34 +47,59 @@ const REFINE_SYSTEM_PROMPT = `Tu es un expert mondial en prompt engineering, mai
 - Si le prompt est deja excellent, ameliore des details subtils
 - Pour les prompts image/video, enrichis le vocabulaire visuel et technique`;
 
+async function callAnthropic(apiKey, systemPrompt, userMessage) {
+  const client = new Anthropic({ apiKey });
+  const response = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 4096,
+    temperature: 0.3,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userMessage }]
+  });
+  return {
+    text: response.content[0].text,
+    inputTokens: response.usage.input_tokens,
+    outputTokens: response.usage.output_tokens,
+    model: 'claude-sonnet-4-6',
+    provider: 'anthropic'
+  };
+}
+
+async function callOpenAI(apiKey, systemPrompt, userMessage) {
+  const client = new OpenAI({ apiKey });
+  const response = await client.chat.completions.create({
+    model: 'gpt-4o',
+    max_tokens: 4096,
+    temperature: 0.3,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userMessage }
+    ]
+  });
+  return {
+    text: response.choices[0].message.content,
+    inputTokens: response.usage.prompt_tokens,
+    outputTokens: response.usage.completion_tokens,
+    model: 'gpt-4o',
+    provider: 'openai'
+  };
+}
+
 module.exports = async function handler(req, res) {
-  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ message: 'Method not allowed' });
+
+  const { prompt, targetLLM, taskType, complexity, apiKey, openaiKey } = req.body;
+
+  if (!prompt || (!apiKey && !openaiKey)) {
+    return res.status(400).json({ message: 'Le prompt et au moins une cle API sont requis.' });
   }
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' });
-  }
-
-  const { prompt, targetLLM, taskType, complexity, apiKey } = req.body;
-
-  if (!prompt || !apiKey) {
-    return res.status(400).json({ message: 'Les champs "prompt" et "apiKey" sont requis.' });
-  }
-
-  if (!apiKey.startsWith('sk-ant-')) {
-    return res.status(400).json({ message: 'Cle API invalide. Elle doit commencer par "sk-ant-".' });
-  }
-
-  try {
-    const client = new Anthropic({ apiKey });
-
-    const userPrompt = `Modele cible : ${targetLLM || 'generique'}
+  const userPrompt = `Modele cible : ${targetLLM || 'generique'}
 Type de tache : ${taskType || 'non specifie'}
 Niveau de complexite : ${complexity || 'basic'}
 
@@ -90,41 +110,57 @@ ${prompt}
 
 Retourne UNIQUEMENT le prompt optimise, sans aucun commentaire.`;
 
-    const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 4096,
-      temperature: 0.3,
-      system: REFINE_SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userPrompt }]
-    });
-
-    const optimizedPrompt = response.content[0].text;
-
-    return res.status(200).json({
-      optimizedPrompt,
-      model: 'claude-sonnet-4-6',
-      inputTokens: response.usage.input_tokens,
-      outputTokens: response.usage.output_tokens
-    });
-
-  } catch (error) {
-    console.error('Refine error:', error.status, error.message, error.error);
-
-    if (error.status === 401) {
-      return res.status(401).json({ message: 'Cle API invalide ou expiree.' });
+  // Try Anthropic first
+  if (apiKey) {
+    try {
+      const result = await callAnthropic(apiKey, REFINE_SYSTEM_PROMPT, userPrompt);
+      return res.status(200).json({
+        optimizedPrompt: result.text,
+        model: result.model,
+        inputTokens: result.inputTokens,
+        outputTokens: result.outputTokens,
+        provider: result.provider
+      });
+    } catch (error) {
+      console.error('Anthropic error:', error.status, error.message);
+      if (!openaiKey) {
+        return handleError(res, error, 'Anthropic');
+      }
+      console.log('Anthropic indisponible, basculement sur OpenAI...');
     }
-    if (error.status === 429) {
-      return res.status(429).json({ message: 'Trop de requetes. Reessayez dans quelques secondes.' });
-    }
-    if (error.status === 400 || error.status === 404) {
-      const detail = error.error?.error?.message || error.message || 'Requete invalide';
-      return res.status(400).json({ message: 'Erreur API : ' + detail });
-    }
-    if (error.status >= 500) {
-      const detail = error.error?.error?.message || error.message || 'Erreur interne';
-      return res.status(502).json({ message: 'Erreur serveur Anthropic : ' + detail });
-    }
-
-    return res.status(500).json({ message: 'Erreur interne : ' + error.message });
   }
+
+  // Fallback to OpenAI
+  if (openaiKey) {
+    try {
+      const result = await callOpenAI(openaiKey, REFINE_SYSTEM_PROMPT, userPrompt);
+      return res.status(200).json({
+        optimizedPrompt: result.text,
+        model: result.model,
+        inputTokens: result.inputTokens,
+        outputTokens: result.outputTokens,
+        provider: result.provider,
+        fallback: true
+      });
+    } catch (error) {
+      console.error('OpenAI error:', error.message);
+      return handleError(res, error, 'OpenAI');
+    }
+  }
+
+  return res.status(500).json({ message: 'Aucune API disponible.' });
 };
+
+function handleError(res, error, provider) {
+  if (error.status === 401 || error.code === 'invalid_api_key') {
+    return res.status(401).json({ message: `Cle API ${provider} invalide ou expiree.` });
+  }
+  if (error.status === 429) {
+    return res.status(429).json({ message: 'Trop de requetes. Reessayez dans quelques secondes.' });
+  }
+  if (error.status >= 500 || error.code === 'server_error') {
+    const detail = error.error?.error?.message || error.message || 'Erreur interne';
+    return res.status(502).json({ message: `Erreur serveur ${provider} : ${detail}` });
+  }
+  return res.status(500).json({ message: `Erreur ${provider} : ${error.message}` });
+}

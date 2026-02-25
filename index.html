@@ -628,16 +628,25 @@
       </div>
       <div class="modal-body">
         <div class="form-group">
-          <label for="api-key">Clé API Anthropic (pour l'optimisation IA)</label>
+          <label for="api-key">Clé API Anthropic (principale)</label>
           <div class="input-row">
             <input type="password" id="api-key" placeholder="sk-ant-api03-...">
             <button class="btn-secondary btn-sm" id="toggle-key-visibility">Afficher</button>
           </div>
-          <p class="helper-text">Votre clé est stockée uniquement dans votre navigateur. Elle n'est jamais enregistrée sur nos serveurs.</p>
+          <p class="helper-text">Clé principale pour les questions d'optimisation et le raffinement IA.</p>
         </div>
         <div class="form-group">
-          <button class="btn-secondary btn-sm" id="btn-save-key">Sauvegarder la clé</button>
+          <label for="openai-key">Clé API OpenAI (secours)</label>
+          <div class="input-row">
+            <input type="password" id="openai-key" placeholder="sk-proj-...">
+            <button class="btn-secondary btn-sm" id="toggle-openai-visibility">Afficher</button>
+          </div>
+          <p class="helper-text">Optionnel. Utilisée automatiquement si Anthropic est indisponible (overloaded, erreur serveur).</p>
         </div>
+        <div class="form-group">
+          <button class="btn-secondary btn-sm" id="btn-save-key">Sauvegarder les clés</button>
+        </div>
+        <p class="helper-text">Vos clés sont stockées uniquement dans votre navigateur. Elles ne sont jamais enregistrées sur nos serveurs.</p>
         <hr>
         <div class="form-group">
           <label>Données locales</label>

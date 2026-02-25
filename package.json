@@ -4,6 +4,7 @@
   "private": true,
   "description": "Createur de prompts LLM optimises - formulaire wizard interactif",
   "dependencies": {
-    "@anthropic-ai/sdk": ">=0.39.0"
+    "@anthropic-ai/sdk": ">=0.39.0",
+    "openai": ">=4.0.0"
   }
 }

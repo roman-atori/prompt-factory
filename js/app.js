@@ -387,7 +387,8 @@ const App = {
     if (this.smartQuestionsGenerated) return;
 
     const apiKey = localStorage.getItem('pf_api_key');
-    if (!apiKey) {
+    const openaiKey = localStorage.getItem('pf_openai_key');
+    if (!apiKey && !openaiKey) {
       document.getElementById('questions-loading').classList.add('hidden');
       document.getElementById('smart-questions-skip').classList.remove('hidden');
       return;
@@ -398,7 +399,8 @@ const App = {
 
   async generateSmartQuestions() {
     const apiKey = localStorage.getItem('pf_api_key');
-    if (!apiKey) return;
+    const openaiKey = localStorage.getItem('pf_openai_key');
+    if (!apiKey && !openaiKey) return;
 
     const loading = document.getElementById('questions-loading');
     const errorDiv = document.getElementById('smart-questions-error');
@@ -416,7 +418,7 @@ const App = {
       const response = await fetch('/api/questions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ formData, apiKey })
+        body: JSON.stringify({ formData, apiKey, openaiKey })
       });
 
       if (!response.ok) {
@@ -428,9 +430,10 @@ const App = {
       this.renderSmartQuestions(result.questions);
       this.smartQuestionsGenerated = true;
 
+      const providerLabel = result.fallback ? `${result.provider} (secours)` : result.provider;
       if (result.inputTokens || result.outputTokens) {
         UIHelpers.showToast(
-          `Questions generees (${result.inputTokens} in / ${result.outputTokens} out tokens)`,
+          `Questions generees via ${providerLabel} (${result.inputTokens} in / ${result.outputTokens} out)`,
           'info', 4000
         );
       }
@@ -798,9 +801,10 @@ const App = {
 
   async optimizeWithAI() {
     const apiKey = localStorage.getItem('pf_api_key');
-    if (!apiKey) {
+    const openaiKey = localStorage.getItem('pf_openai_key');
+    if (!apiKey && !openaiKey) {
       this.openSettings();
-      UIHelpers.showToast('Configurez votre cle API d\'abord.', 'error');
+      UIHelpers.showToast('Configurez au moins une cle API.', 'error');
       return;
     }
 
@@ -822,7 +826,8 @@ const App = {
           targetLLM: llmKey,
           taskType: formData.taskType,
           complexity: formData.complexity,
-          apiKey: apiKey
+          apiKey,
+          openaiKey
         })
       });
 
@@ -845,11 +850,12 @@ const App = {
       document.getElementById('btn-copy-optimized').disabled = false;
       document.getElementById('btn-download-optimized').disabled = false;
 
-      UIHelpers.showToast('Prompt optimise avec succes !', 'success');
+      const providerLabel = result.fallback ? `${result.provider} (secours)` : result.provider;
+      UIHelpers.showToast(`Optimise via ${providerLabel} !`, 'success');
 
       if (result.inputTokens || result.outputTokens) {
         UIHelpers.showToast(
-          `Tokens : ${result.inputTokens} in / ${result.outputTokens} out`,
+          `${result.model} : ${result.inputTokens} in / ${result.outputTokens} out`,
           'info', 5000
         );
       }
@@ -884,6 +890,8 @@ const App = {
     document.getElementById('settings-modal').classList.remove('hidden');
     const saved = localStorage.getItem('pf_api_key');
     if (saved) document.getElementById('api-key').value = saved;
+    const savedOpenAI = localStorage.getItem('pf_openai_key');
+    if (savedOpenAI) document.getElementById('openai-key').value = savedOpenAI;
   },
 
   closeSettings() {
@@ -891,22 +899,38 @@ const App = {
   },
 
   saveApiKey() {
-    const key = document.getElementById('api-key').value.trim();
-    if (key) {
-      localStorage.setItem('pf_api_key', key);
-      this.checkApiKey();
-      UIHelpers.showToast('Cle API sauvegardee.', 'success');
+    const anthropicKey = document.getElementById('api-key').value.trim();
+    const openaiKey = document.getElementById('openai-key').value.trim();
+
+    if (anthropicKey) {
+      localStorage.setItem('pf_api_key', anthropicKey);
     } else {
       localStorage.removeItem('pf_api_key');
-      this.checkApiKey();
-      UIHelpers.showToast('Cle API supprimee.', 'info');
+    }
+
+    if (openaiKey) {
+      localStorage.setItem('pf_openai_key', openaiKey);
+    } else {
+      localStorage.removeItem('pf_openai_key');
+    }
+
+    this.checkApiKey();
+
+    if (anthropicKey || openaiKey) {
+      const parts = [];
+      if (anthropicKey) parts.push('Anthropic');
+      if (openaiKey) parts.push('OpenAI');
+      UIHelpers.showToast('Cles sauvegardees : ' + parts.join(' + '), 'success');
+    } else {
+      UIHelpers.showToast('Toutes les cles API supprimees.', 'info');
     }
   },
 
   checkApiKey() {
-    const hasKey = !!localStorage.getItem('pf_api_key');
+    const hasAnthropic = !!localStorage.getItem('pf_api_key');
+    const hasOpenAI = !!localStorage.getItem('pf_openai_key');
     const btn = document.getElementById('btn-optimize');
-    if (btn) btn.disabled = !hasKey;
+    if (btn) btn.disabled = !(hasAnthropic || hasOpenAI);
   },
 
   // ===== LOCAL STORAGE =====
@@ -917,6 +941,7 @@ const App = {
 
   clearAllData() {
     localStorage.removeItem('pf_api_key');
+    localStorage.removeItem('pf_openai_key');
     localStorage.removeItem('pf_preferences');
     localStorage.removeItem('pf_history');
     this.checkApiKey();
@@ -1341,6 +1366,17 @@ const App = {
     document.getElementById('toggle-key-visibility').addEventListener('click', () => {
       const input = document.getElementById('api-key');
       const btn = document.getElementById('toggle-key-visibility');
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = 'Masquer';
+      } else {
+        input.type = 'password';
+        btn.textContent = 'Afficher';
+      }
+    });
+    document.getElementById('toggle-openai-visibility').addEventListener('click', () => {
+      const input = document.getElementById('openai-key');
+      const btn = document.getElementById('toggle-openai-visibility');
       if (input.type === 'password') {
         input.type = 'text';
         btn.textContent = 'Masquer';
