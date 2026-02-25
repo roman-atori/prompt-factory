@@ -108,7 +108,7 @@ Retourne UNIQUEMENT le prompt optimise, sans aucun commentaire.`;
     });
 
   } catch (error) {
-    console.error('Refine error:', error.message);
+    console.error('Refine error:', error.status, error.message, error.error);
 
     if (error.status === 401) {
       return res.status(401).json({ message: 'Cle API invalide ou expiree.' });
@@ -116,8 +116,13 @@ Retourne UNIQUEMENT le prompt optimise, sans aucun commentaire.`;
     if (error.status === 429) {
       return res.status(429).json({ message: 'Trop de requetes. Reessayez dans quelques secondes.' });
     }
+    if (error.status === 400 || error.status === 404) {
+      const detail = error.error?.error?.message || error.message || 'Requete invalide';
+      return res.status(400).json({ message: 'Erreur API : ' + detail });
+    }
     if (error.status >= 500) {
-      return res.status(502).json({ message: 'Erreur serveur Anthropic. Reessayez.' });
+      const detail = error.error?.error?.message || error.message || 'Erreur interne';
+      return res.status(502).json({ message: 'Erreur serveur Anthropic : ' + detail });
     }
 
     return res.status(500).json({ message: 'Erreur interne : ' + error.message });

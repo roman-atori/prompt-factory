@@ -979,6 +979,55 @@ const App = {
     UIHelpers.showToast('Formulaire reinitialise.', 'info');
   },
 
+  // ===== FILE UPLOAD (Step 4) =====
+
+  _handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Max 500KB for text files
+    if (file.size > 500 * 1024) {
+      UIHelpers.showToast('Fichier trop volumineux (max 500 Ko).', 'error');
+      event.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target.result;
+      const textarea = document.getElementById('input-description');
+
+      // Append file content with separator
+      if (textarea.value.trim()) {
+        textarea.value += '\n\n--- Contenu du fichier : ' + file.name + ' ---\n' + content;
+      } else {
+        textarea.value = '--- Contenu du fichier : ' + file.name + ' ---\n' + content;
+      }
+
+      // Show filename badge
+      document.getElementById('upload-filename').textContent = file.name;
+      document.getElementById('upload-info').classList.remove('hidden');
+
+      // Remove highlight if present
+      textarea.classList.remove('guide-highlight');
+
+      UIHelpers.showToast('Fichier "' + file.name + '" ajoute.', 'success');
+    };
+
+    reader.onerror = () => {
+      UIHelpers.showToast('Impossible de lire le fichier.', 'error');
+    };
+
+    reader.readAsText(file);
+  },
+
+  _removeUploadedFile() {
+    const fileInput = document.getElementById('file-upload');
+    fileInput.value = '';
+    document.getElementById('upload-info').classList.add('hidden');
+    document.getElementById('upload-filename').textContent = '';
+  },
+
   // ===== DOWNLOAD FORMAT =====
 
   _downloadInFormat(content, baseName, format) {
@@ -1309,6 +1358,16 @@ const App = {
 
     // "Autre" pattern bindings (only for non-multi-select fields)
     this._bindAutrePattern('output-format', 'output-format-autre');
+
+    // Step 4: File upload
+    const fileInput = document.getElementById('file-upload');
+    if (fileInput) {
+      fileInput.addEventListener('change', (e) => this._handleFileUpload(e));
+    }
+    const removeFileBtn = document.getElementById('btn-upload-remove');
+    if (removeFileBtn) {
+      removeFileBtn.addEventListener('click', () => this._removeUploadedFile());
+    }
 
     // Few-shot toggle
     document.getElementById('few-shot-toggle').addEventListener('change', (e) => {

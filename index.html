@@ -194,6 +194,17 @@
             <label for="input-description">Données d'entrée fournies au LLM</label>
             <textarea id="input-description" rows="3" placeholder="Décrivez ce que vous fournirez au LLM en entrée. Ex : 'Un texte de 500 mots à résumer', 'Des données CSV avec 3 colonnes', 'Un email client auquel répondre'..."></textarea>
             <p class="helper-text">Quel type de contenu le LLM recevra-t-il pour travailler ? Cela aide à adapter le prompt.</p>
+            <div class="upload-zone" id="upload-zone">
+              <label class="btn-upload" for="file-upload">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Joindre un fichier
+              </label>
+              <input type="file" id="file-upload" class="hidden" accept=".txt,.md,.csv,.json,.xml,.yaml,.yml,.html,.css,.js,.py,.ts,.log,.sql,.env,.toml,.ini,.cfg,.conf,.sh,.bat,.r,.go,.java,.cpp,.c,.h,.rb,.php,.swift,.kt,.rs,.jsx,.tsx,.vue,.svelte,.astro">
+              <span class="upload-info hidden" id="upload-info">
+                <span class="upload-filename" id="upload-filename"></span>
+                <button class="btn-upload-remove" id="btn-upload-remove" title="Retirer">&times;</button>
+              </span>
+            </div>
           </div>
 
           <div class="form-group">

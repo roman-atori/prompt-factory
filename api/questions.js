@@ -67,7 +67,7 @@ module.exports = async function handler(req, res) {
     };
 
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
       temperature: 0.5,
       system: QUESTIONS_SYSTEM_PROMPT,
@@ -104,7 +104,7 @@ module.exports = async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Questions error:', error.message);
+    console.error('Questions error:', error.status, error.message, error.error);
 
     if (error.status === 401) {
       return res.status(401).json({ message: 'Cle API invalide ou expiree.' });
@@ -112,8 +112,13 @@ module.exports = async function handler(req, res) {
     if (error.status === 429) {
       return res.status(429).json({ message: 'Trop de requetes. Reessayez dans quelques secondes.' });
     }
+    if (error.status === 400 || error.status === 404) {
+      const detail = error.error?.error?.message || error.message || 'Requete invalide';
+      return res.status(400).json({ message: 'Erreur API : ' + detail });
+    }
     if (error.status >= 500) {
-      return res.status(502).json({ message: 'Erreur serveur Anthropic. Reessayez.' });
+      const detail = error.error?.error?.message || error.message || 'Erreur interne';
+      return res.status(502).json({ message: 'Erreur serveur Anthropic : ' + detail });
     }
 
     return res.status(500).json({ message: 'Erreur interne : ' + error.message });
