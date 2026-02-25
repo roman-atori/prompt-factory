@@ -256,7 +256,7 @@ const App = {
     card.className = 'llm-card';
     card.dataset.llm = key;
     card.innerHTML = `
-      <div class="llm-icon-svg">${cfg.svg}</div>
+      <div class="llm-icon-img"><img src="${cfg.icon}" alt="${cfg.name}" loading="lazy"></div>
       <div class="llm-info">
         <h3>${cfg.name}</h3>
         <p>${cfg.description}</p>

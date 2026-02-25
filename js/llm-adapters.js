@@ -15,25 +15,25 @@ const LLMAdapters = {
   config: {
     claude: {
       name: 'Claude',
-      svg: '<svg viewBox="0 0 32 32" fill="none"><path d="M21.15 4.76l-5.88 18.48h-2.89L6.5 4.76h3.15l4.35 14.48L18.33 4.76h2.82zm2.64 13.67c.13 1.02.57 1.82 1.33 2.4.76.57 1.7.86 2.82.86.8 0 1.5-.15 2.1-.44.6-.3 1.02-.72 1.24-1.26h2.55c-.4 1.2-1.1 2.12-2.1 2.78-1 .66-2.27.98-3.79.98-1.23 0-2.32-.27-3.27-.82a5.6 5.6 0 01-2.2-2.32c-.52-1-.78-2.16-.78-3.48 0-1.3.26-2.45.78-3.45a5.62 5.62 0 012.18-2.34c.93-.56 2-.84 3.22-.84 1.2 0 2.25.28 3.15.84.9.56 1.58 1.33 2.05 2.31.47.98.7 2.1.7 3.35v.43H23.79z" fill="#D97757"/><circle cx="16" cy="16" r="15" stroke="#D97757" stroke-width="1.5" fill="none"/></svg>',
+      icon: 'img/logos/claude.png',
       description: 'Anthropic - XML structure, données en haut',
       category: 'text'
     },
     chatgpt: {
       name: 'ChatGPT',
-      svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="15" stroke="#10A37F" stroke-width="1.5" fill="none"/><path d="M16 6.5a5.5 5.5 0 014.9 3.01 5.5 5.5 0 012.1 10.28v.01a5.5 5.5 0 01-7 3.02A5.5 5.5 0 017.9 12.54 5.5 5.5 0 0116 6.5zm0 1.5a4 4 0 00-3.46 6l.22.38-.1.43a4 4 0 001.08 3.78l.34.3-.08.44a4 4 0 003.92 1.45l.44-.08.3.34a4 4 0 003.78-1.08l.3-.34.44.08a4 4 0 001.45-3.92l-.08-.44.34-.3A4 4 0 0022.54 11l-.38.22-.43-.1A4 4 0 0016 8z" fill="#10A37F"/></svg>',
+      icon: 'img/logos/chatgpt.png',
       description: 'OpenAI - Developer role, strict mode',
       category: 'text'
     },
     gemini: {
       name: 'Gemini',
-      svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="15" stroke="#4285F4" stroke-width="1.5" fill="none"/><path d="M16 4C16 4 26 10 26 16C26 22 16 28 16 28C16 28 6 22 6 16C6 10 16 4 16 4Z" fill="url(#gemini-grad)"/><defs><linearGradient id="gemini-grad" x1="6" y1="4" x2="26" y2="28"><stop stop-color="#4285F4"/><stop offset="0.5" stop-color="#9B72CB"/><stop offset="1" stop-color="#D96570"/></linearGradient></defs></svg>',
+      icon: 'img/logos/gemini.png',
       description: 'Google - Anchor context, grounding',
       category: 'text'
     },
     perplexity: {
       name: 'Perplexity',
-      svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="15" stroke="#20B2AA" stroke-width="1.5" fill="none"/><path d="M16 6l8 5v10l-8 5-8-5V11l8-5z" stroke="#20B2AA" stroke-width="1.5" fill="none"/><path d="M16 6v20M8 11l16 10M24 11L8 21" stroke="#20B2AA" stroke-width="1"/></svg>',
+      icon: 'img/logos/perplexity.png',
       description: 'Search-first, zero-shot',
       category: 'text'
     }
@@ -43,19 +43,19 @@ const LLMAdapters = {
   imageConfig: {
     flux: {
       name: 'FLUX',
-      svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="15" stroke="#FF6B35" stroke-width="1.5" fill="none"/><path d="M8 12h4l4 8h4l4-8" stroke="#FF6B35" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 20h4l4-8h4l4 8" stroke="#FF6B35" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"/></svg>',
+      icon: 'img/logos/flux.png',
       description: 'Image - Sujets détaillés, style, negative prompts',
       category: 'image'
     },
     'stable-diffusion': {
       name: 'Stable Diffusion',
-      svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="15" stroke="#A855F7" stroke-width="1.5" fill="none"/><circle cx="16" cy="16" r="6" stroke="#A855F7" stroke-width="1.5" fill="none"/><circle cx="16" cy="16" r="2" fill="#A855F7"/><path d="M16 4v6M16 22v6M4 16h6M22 16h6M7.8 7.8l4.2 4.2M20 20l4.2 4.2M7.8 24.2l4.2-4.2M20 12l4.2-4.2" stroke="#A855F7" stroke-width="1" opacity="0.5"/></svg>',
+      icon: 'img/logos/stable-diffusion.png',
       description: 'Image - Quality keywords, composition, lighting',
       category: 'image'
     },
     'nano-banana': {
       name: 'Nano Banana',
-      svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="15" stroke="#FBBC04" stroke-width="1.5" fill="none"/><path d="M16 7c-5 0-9 4-9 9s4 9 9 9 9-4 9-9" stroke="#FBBC04" stroke-width="2" stroke-linecap="round"/><path d="M25 16c0-5-4-9-9-9" stroke="#4285F4" stroke-width="2" stroke-linecap="round"/><circle cx="13" cy="15" r="1.5" fill="#FBBC04"/><circle cx="19" cy="15" r="1.5" fill="#4285F4"/><path d="M13 20c1.5 1.5 4.5 1.5 6 0" stroke="#34A853" stroke-width="1.5" stroke-linecap="round"/></svg>',
+      icon: 'img/logos/nano-banana.png',
       description: 'Google - Text rendering, thinking, search grounding',
       category: 'image'
     }
@@ -65,7 +65,7 @@ const LLMAdapters = {
   videoConfig: {
     veo: {
       name: 'Veo (Google)',
-      svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="15" stroke="#EA4335" stroke-width="1.5" fill="none"/><path d="M12 10v12l10-6-10-6z" fill="#EA4335"/></svg>',
+      icon: 'img/logos/veo.png',
       description: 'Vidéo - Camera movement, cinématique, tempo',
       category: 'video'
     }
