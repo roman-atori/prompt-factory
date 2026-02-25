@@ -107,6 +107,9 @@ const App = {
     document.querySelectorAll('.wizard-step').forEach(s => s.classList.remove('active'));
     const target = document.getElementById('step-' + stepNumber);
     if (target) target.classList.add('active');
+    // Wide mode for steps with large panels (7, 8)
+    const container = document.getElementById('wizard-container');
+    if (container) container.classList.toggle('wide-mode', stepNumber >= 7);
     this.updateStepIndicators();
     this.updateNavigation();
     this._updateGuideHighlights();
