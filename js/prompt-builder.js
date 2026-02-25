@@ -151,7 +151,7 @@ const PromptBuilder = {
   },
 
   shouldRecommendCoT(taskType) {
-    const complexTasks = ['code', 'analyse', 'classification', 'agent', 'extraction', 'claude-code', 'n8n'];
+    const complexTasks = ['code', 'analyse', 'classification', 'agent', 'extraction', 'claude-code', 'n8n', 'ia-llm'];
     return complexTasks.includes(taskType);
   },
 
@@ -166,6 +166,10 @@ const PromptBuilder = {
 
   hasVideoModel(targetLLMs) {
     return targetLLMs.some(m => m === 'veo');
+  },
+
+  hasVibeModel(targetLLMs) {
+    return targetLLMs.some(m => m === 'claude-code');
   },
 
   hasTextModel(targetLLMs) {
@@ -190,6 +194,7 @@ const PromptBuilder = {
       'brainstorming': 'consultant creatif',
       'claude-code': 'expert Claude Code et prompt engineering pour agents IA',
       'n8n': 'expert n8n et automatisation de workflows IA',
+      'ia-llm': 'expert en IA, LLMs et prompt engineering',
       'image-gen': 'artiste digital',
       'video-gen': 'directeur de la photographie',
       'autre': 'assistant specialise'

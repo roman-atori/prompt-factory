@@ -945,6 +945,69 @@ textarea {
   color: var(--color-primary);
 }
 
+/* Format display dropdown */
+.format-select {
+  position: relative;
+  display: inline-block;
+}
+
+.format-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  z-index: 50;
+  min-width: 160px;
+  overflow: hidden;
+}
+
+.format-option {
+  display: block;
+  width: 100%;
+  padding: 6px 12px;
+  border: none;
+  background: none;
+  text-align: left;
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  cursor: pointer;
+  color: var(--color-text);
+  transition: background var(--transition-fast);
+}
+
+.format-option:hover {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.format-option.active {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+/* Format source view */
+.format-source {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  background: var(--color-bg);
+  padding: var(--space-lg);
+  border-radius: var(--radius-sm);
+  margin: 0;
+}
+
+.format-source code {
+  background: none;
+  padding: 0;
+}
+
 /* AI Status */
 .ai-status {
   display: flex;

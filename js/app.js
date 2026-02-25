@@ -6,13 +6,16 @@ const App = {
 
   currentStep: 1,
   totalSteps: 8,
+  maxStepReached: 1,
   generatedPrompts: {},
   originalPrompts: {},
   activeLLMTab: null,
   activeLLMTabOptimize: null,
   editMode: false,
   previewMode: 'split', // 'split' or 'combined'
+  displayFormat: 'rendered', // 'rendered', 'markdown', 'plaintext'
   step8Modes: { original: 'split', optimized: 'split' },
+  step8Formats: { original: 'rendered', optimized: 'rendered' },
   smartQuestionsGenerated: false,
 
   // ===== INITIALIZATION =====
@@ -23,6 +26,7 @@ const App = {
     this.renderLLMCards();
     this.renderImageModelCards();
     this.renderVideoModelCards();
+    this.renderVibeModelCards();
     this.renderTaskCards();
     this._initMultiSelects();
     this.bindEvents();
@@ -41,13 +45,11 @@ const App = {
       dot.className = 'step-dot' + (i === 1 ? ' active' : '');
       dot.textContent = i;
       dot.dataset.step = i;
-      // Allow clicking on completed steps to go back
+      // Allow clicking on any visited step (forward & backward)
       dot.addEventListener('click', () => {
         const targetStep = parseInt(dot.dataset.step);
-        if (targetStep < this.currentStep) {
-          this.currentStep = targetStep;
-          this.showStep(targetStep);
-          if (targetStep === 4) this.updateStep4Fields();
+        if (targetStep !== this.currentStep && targetStep <= this.maxStepReached) {
+          this.goToStep(targetStep);
         }
       });
       container.appendChild(dot);
@@ -59,7 +61,7 @@ const App = {
       const step = parseInt(dot.dataset.step);
       dot.classList.remove('active', 'completed');
       if (step === this.currentStep) dot.classList.add('active');
-      else if (step < this.currentStep) dot.classList.add('completed');
+      else if (step <= this.maxStepReached) dot.classList.add('completed');
     });
     const pct = (this.currentStep / this.totalSteps) * 100;
     document.getElementById('progress-fill').style.width = pct + '%';
@@ -71,6 +73,7 @@ const App = {
     if (!this.validateCurrentStep()) return;
     if (this.currentStep < this.totalSteps) {
       this.currentStep++;
+      this.maxStepReached = Math.max(this.maxStepReached, this.currentStep);
       this.showStep(this.currentStep);
       if (this.currentStep === 4) this.updateStep4Fields();
       if (this.currentStep === 6) this.triggerSmartQuestions();
@@ -88,10 +91,11 @@ const App = {
   },
 
   goToStep(stepNumber) {
-    if (stepNumber >= 1 && stepNumber <= this.totalSteps) {
+    if (stepNumber >= 1 && stepNumber <= this.maxStepReached) {
       this.currentStep = stepNumber;
       this.showStep(stepNumber);
       if (stepNumber === 4) this.updateStep4Fields();
+      if (stepNumber === 6 && !this.smartQuestionsGenerated) this.triggerSmartQuestions();
       if (stepNumber === 7) this.generatePreview();
       if (stepNumber === 8) this.prepareOptimizationStep();
     }
@@ -128,6 +132,7 @@ const App = {
   updateStep4Fields() {
     const selected = this._getSelectedModels();
     const hasText = PromptBuilder.hasTextModel(selected);
+    const hasVibe = PromptBuilder.hasVibeModel(selected);
     const hasImage = PromptBuilder.hasImageModel(selected);
     const hasVideo = PromptBuilder.hasVideoModel(selected);
 
@@ -135,7 +140,7 @@ const App = {
     const imageFields = document.getElementById('image-fields');
     const videoFields = document.getElementById('video-fields');
 
-    if (textFields) textFields.classList.toggle('hidden', !hasText);
+    if (textFields) textFields.classList.toggle('hidden', !(hasText || hasVibe));
     if (imageFields) imageFields.classList.toggle('hidden', !hasImage);
     if (videoFields) videoFields.classList.toggle('hidden', !hasVideo);
   },
@@ -179,10 +184,11 @@ const App = {
       case 4: {
         const selected = this._getSelectedModels();
         const hasText = PromptBuilder.hasTextModel(selected);
+        const hasVibe = PromptBuilder.hasVibeModel(selected);
         const hasImage = PromptBuilder.hasImageModel(selected);
         const hasVideo = PromptBuilder.hasVideoModel(selected);
 
-        if (hasText) {
+        if (hasText || hasVibe) {
           const desc = document.getElementById('task-description').value.trim();
           if (!desc) { this._showError('error-step4'); return false; }
         }
@@ -255,6 +261,16 @@ const App = {
     });
   },
 
+  renderVibeModelCards() {
+    const grid = document.getElementById('vibe-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    Object.entries(LLMAdapters.vibeConfig).forEach(([key, cfg]) => {
+      const card = this._createModelCard(key, cfg);
+      grid.appendChild(card);
+    });
+  },
+
   _createModelCard(key, cfg) {
     const card = document.createElement('div');
     card.className = 'llm-card';
@@ -289,6 +305,7 @@ const App = {
       { key: 'qa-rag', icon: '❓', label: 'Question-Réponse / RAG' },
       { key: 'agent', icon: '🤖', label: 'Agent / Automatisation' },
       { key: 'brainstorming', icon: '💡', label: 'Brainstorming / Créativité' },
+      { key: 'ia-llm', icon: '🧠', label: 'IA & LLM' },
       { key: 'claude-code', icon: 'img/logos/claude-code.png', label: 'Claude Code', isLogo: true },
       { key: 'n8n', icon: 'img/logos/n8n.png', label: 'n8n / Workflow IA', isLogo: true },
       { key: 'image-gen', icon: '🎨', label: 'Génération d\'images' },
@@ -447,7 +464,7 @@ const App = {
         fieldHtml = `<textarea class="smart-answer" rows="3" placeholder="${q.placeholder || ''}"></textarea>`;
       } else if (q.type === 'choice' && q.options) {
         fieldHtml = `<select class="smart-answer smart-answer-select">
-          <option value="">-- Choisir --</option>
+          <option value="">Choisir</option>
           ${q.options.map(o => `<option value="${o}">${o}</option>`).join('')}
           <option value="__autre__">Autre (saisie libre)...</option>
         </select>
@@ -510,7 +527,7 @@ const App = {
   renderLLMTabs() {
     const tabsContainer = document.getElementById('llm-tabs');
     tabsContainer.innerHTML = '';
-    const allConfigs = { ...LLMAdapters.config, ...LLMAdapters.imageConfig, ...LLMAdapters.videoConfig };
+    const allConfigs = { ...LLMAdapters.config, ...LLMAdapters.imageConfig, ...LLMAdapters.videoConfig, ...LLMAdapters.vibeConfig };
 
     Object.keys(this.generatedPrompts).forEach(key => {
       const cfg = allConfigs[key];
@@ -534,7 +551,7 @@ const App = {
     const markdown = LLMAdapters.renderPreview(adapted, llmKey, this.previewMode);
 
     document.getElementById('prompt-editor').value = markdown;
-    document.getElementById('prompt-preview').innerHTML = UIHelpers.renderMarkdown(markdown);
+    this._renderWithFormat(document.getElementById('prompt-preview'), markdown, this.displayFormat);
 
     const rawText = LLMAdapters.getRawPrompt(adapted);
     const tokens = UIHelpers.estimateTokens(rawText);
@@ -568,8 +585,61 @@ const App = {
       editor.classList.add('hidden');
       preview.classList.remove('hidden');
       btnEdit.classList.remove('active');
-      preview.innerHTML = UIHelpers.renderMarkdown(editor.value);
+      this._renderWithFormat(preview, editor.value, this.displayFormat);
     }
+  },
+
+  setDisplayFormat(format) {
+    this.displayFormat = format;
+
+    // Update button label
+    const labels = { rendered: 'Rendu', markdown: 'Source', plaintext: 'Texte' };
+    const btn = document.getElementById('btn-format');
+    if (btn) btn.textContent = (labels[format] || 'Rendu') + ' \u25BE';
+
+    // Update active state in menu
+    document.querySelectorAll('#format-menu .format-option').forEach(opt => {
+      opt.classList.toggle('active', opt.dataset.format === format);
+    });
+
+    // Re-render if not in edit mode
+    if (!this.editMode && this.activeLLMTab) {
+      const editor = document.getElementById('prompt-editor');
+      const preview = document.getElementById('prompt-preview');
+      this._renderWithFormat(preview, editor.value, format);
+    }
+  },
+
+  _renderWithFormat(container, markdown, format) {
+    switch (format) {
+      case 'markdown':
+        container.innerHTML = `<pre class="format-source"><code>${UIHelpers.escapeHtml(markdown)}</code></pre>`;
+        break;
+      case 'plaintext':
+        container.innerHTML = '';
+        container.style.whiteSpace = 'pre-wrap';
+        container.textContent = this._stripMarkdown(markdown);
+        break;
+      case 'rendered':
+      default:
+        container.style.whiteSpace = '';
+        container.innerHTML = UIHelpers.renderMarkdown(markdown);
+        break;
+    }
+  },
+
+  _stripMarkdown(text) {
+    return text
+      .replace(/^#{1,6}\s+/gm, '')
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/\*(.*?)\*/g, '$1')
+      .replace(/`{3}[\s\S]*?`{3}/g, (m) => m.replace(/`{3}.*?\n?/g, '').trim())
+      .replace(/`(.*?)`/g, '$1')
+      .replace(/^>\s+/gm, '')
+      .replace(/^[-*+]\s+/gm, '- ')
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+      .replace(/^---+$/gm, '')
+      .trim();
   },
 
   // ===== FEEDBACK (Step 7) =====
@@ -605,7 +675,7 @@ const App = {
     // Render tabs for step 8
     const tabsContainer = document.getElementById('llm-tabs-optimize');
     tabsContainer.innerHTML = '';
-    const allConfigs = { ...LLMAdapters.config, ...LLMAdapters.imageConfig, ...LLMAdapters.videoConfig };
+    const allConfigs = { ...LLMAdapters.config, ...LLMAdapters.imageConfig, ...LLMAdapters.videoConfig, ...LLMAdapters.vibeConfig };
 
     Object.keys(this.originalPrompts).forEach(key => {
       const cfg = allConfigs[key];
@@ -650,6 +720,7 @@ const App = {
 
   _renderComparisonPanel(panel, llmKey) {
     const mode = this.step8Modes[panel];
+    const format = this.step8Formats[panel];
     const preview = document.getElementById(`preview-${panel}`);
     const editor = document.getElementById(`editor-${panel}`);
 
@@ -663,14 +734,13 @@ const App = {
     if (!content) return;
 
     if (panel === 'optimized' && content._optimizedMarkdown) {
-      // Optimized panel uses raw markdown
       const md = content._optimizedMarkdown;
       if (mode === 'edit') {
         editor.value = md;
         editor.classList.remove('hidden');
         preview.classList.add('hidden');
       } else {
-        preview.innerHTML = UIHelpers.renderMarkdown(md);
+        this._renderWithFormat(preview, md, format);
         preview.classList.remove('hidden');
         editor.classList.add('hidden');
       }
@@ -683,7 +753,7 @@ const App = {
         editor.classList.remove('hidden');
         preview.classList.add('hidden');
       } else {
-        preview.innerHTML = UIHelpers.renderMarkdown(md);
+        this._renderWithFormat(preview, md, format);
         preview.classList.remove('hidden');
         editor.classList.add('hidden');
       }
@@ -696,6 +766,26 @@ const App = {
     document.querySelectorAll(`.comparison-toolbar .toolbar-tab[data-panel="${panel}"]`).forEach(btn => {
       btn.classList.toggle('active', btn.dataset.mode === mode);
     });
+  },
+
+  _setComparisonFormat(panel, format) {
+    this.step8Formats[panel] = format;
+
+    // Update button label
+    const labels = { rendered: 'Rendu', markdown: 'Source', plaintext: 'Texte' };
+    const btn = document.querySelector(`.format-btn[data-panel="${panel}"]`);
+    if (btn) btn.textContent = (labels[format] || 'Rendu') + ' \u25BE';
+
+    // Update active state in format menu
+    document.querySelectorAll(`.format-menu[data-panel="${panel}"] .format-option`).forEach(opt => {
+      opt.classList.toggle('active', opt.dataset.format === format);
+    });
+
+    // Re-render panel
+    const llmKey = this.activeLLMTabOptimize;
+    if (llmKey) {
+      this._renderComparisonPanel(panel, llmKey);
+    }
   },
 
   _setComparisonMode(panel, mode) {
@@ -836,12 +926,16 @@ const App = {
   resetAll() {
     // Reset state
     this.currentStep = 1;
+    this.maxStepReached = 1;
     this.generatedPrompts = {};
     this.originalPrompts = {};
     this.activeLLMTab = null;
     this.activeLLMTabOptimize = null;
     this.editMode = false;
     this.previewMode = 'split';
+    this.displayFormat = 'rendered';
+    this.step8Modes = { original: 'split', optimized: 'split' };
+    this.step8Formats = { original: 'rendered', optimized: 'rendered' };
     this.smartQuestionsGenerated = false;
 
     // Deselect all cards
@@ -1098,10 +1192,11 @@ const App = {
       case 4: {
         const selected = this._getSelectedModels();
         const hasText = PromptBuilder.hasTextModel(selected);
+        const hasVibe = PromptBuilder.hasVibeModel(selected);
         const hasImage = PromptBuilder.hasImageModel(selected);
         const hasVideo = PromptBuilder.hasVideoModel(selected);
 
-        if (hasText) {
+        if (hasText || hasVibe) {
           this._highlightIfEmpty('task-description');
           this._highlightIfEmpty('input-description');
           this._highlightIfEmpty('output-format');
@@ -1248,6 +1343,19 @@ const App = {
     document.getElementById('btn-mode-combined').addEventListener('click', () => this.setPreviewMode('combined'));
     document.getElementById('btn-edit-mode').addEventListener('click', () => this.setEditMode(!this.editMode));
 
+    // Step 7: Format display dropdown
+    document.getElementById('btn-format').addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.getElementById('format-menu').classList.toggle('hidden');
+    });
+    document.getElementById('format-menu').addEventListener('click', (e) => {
+      const opt = e.target.closest('.format-option');
+      if (!opt) return;
+      e.stopPropagation();
+      this.setDisplayFormat(opt.dataset.format);
+      document.getElementById('format-menu').classList.add('hidden');
+    });
+
     // Step 7: Actions
     document.getElementById('btn-copy').addEventListener('click', () => {
       const text = document.getElementById('prompt-editor').value;
@@ -1275,11 +1383,33 @@ const App = {
     document.getElementById('btn-apply-feedback').addEventListener('click', () => this.applyFeedback());
 
     // Step 8: Comparison panel mode tabs
-    document.querySelectorAll('.comparison-toolbar .toolbar-tab').forEach(btn => {
+    document.querySelectorAll('.comparison-toolbar .toolbar-tab[data-mode]').forEach(btn => {
       btn.addEventListener('click', () => {
         const panel = btn.dataset.panel;
         const mode = btn.dataset.mode;
-        this._setComparisonMode(panel, mode);
+        if (panel && mode) this._setComparisonMode(panel, mode);
+      });
+    });
+
+    // Step 8: Format display dropdowns for both panels
+    document.querySelectorAll('.format-btn[data-panel]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const panel = btn.dataset.panel;
+        const menu = document.querySelector(`.format-menu[data-panel="${panel}"]`);
+        // Close all format menus first
+        document.querySelectorAll('.format-menu').forEach(m => m.classList.add('hidden'));
+        if (menu) menu.classList.toggle('hidden');
+      });
+    });
+    document.querySelectorAll('.format-menu[data-panel] .format-option').forEach(opt => {
+      opt.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const panel = opt.dataset.panel;
+        const format = opt.dataset.format;
+        if (panel && format) this._setComparisonFormat(panel, format);
+        const menu = opt.closest('.format-menu');
+        if (menu) menu.classList.add('hidden');
       });
     });
 
@@ -1350,9 +1480,10 @@ const App = {
     // Bind guide highlight listeners
     this._bindGuideListeners();
 
-    // Close download menus on outside click
+    // Close dropdown menus on outside click
     document.addEventListener('click', () => {
       document.querySelectorAll('.download-menu').forEach(m => m.classList.add('hidden'));
+      document.querySelectorAll('.format-menu').forEach(m => m.classList.add('hidden'));
     });
 
     // Keyboard shortcuts

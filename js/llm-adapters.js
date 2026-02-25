@@ -71,6 +71,16 @@ const LLMAdapters = {
     }
   },
 
+  // --- Vibe Coding configs ---
+  vibeConfig: {
+    'claude-code': {
+      name: 'Claude Code',
+      icon: 'img/logos/claude-code.png',
+      description: 'Vibe Coding - Prompts pour agent IA en CLI',
+      category: 'vibe'
+    }
+  },
+
   /**
    * Main entry - adapt a prompt for a target model
    */
@@ -84,6 +94,7 @@ const LLMAdapters = {
       case 'stable-diffusion': return this.formatForStableDiffusion(promptData);
       case 'nano-banana': return this.formatForNanoBanana(promptData);
       case 'veo': return this.formatForVeo(promptData);
+      case 'claude-code': return this.formatForClaudeCode(promptData);
       default: return this.formatGeneric(promptData);
     }
   },
@@ -332,6 +343,75 @@ const LLMAdapters = {
   },
 
   // ===================================================================
+  // VIBE CODING
+  // ===================================================================
+
+  formatForClaudeCode(data) {
+    let systemPrompt = data.persona;
+
+    systemPrompt += '\n\nTu travailles dans Claude Code (CLI). Principes :';
+    systemPrompt += '\n- Lis le code existant avant toute modification';
+    systemPrompt += '\n- Fais des changements minimaux et cibles';
+    systemPrompt += '\n- Teste apres implementation';
+    systemPrompt += '\n- Explique tes decisions architecturales';
+
+    if (data.raw.complexity === 'advanced' || data.raw.complexity === 'expert') {
+      systemPrompt += '\n- Utilise les sub-agents pour les taches paralleles';
+      systemPrompt += '\n- Privilege les edits atomiques (Edit > Write)';
+      systemPrompt += '\n- Planifie avec /plan avant execution';
+    }
+
+    let userPrompt = '';
+
+    if (data.raw.domain) userPrompt += `Projet : ${data.raw.domain}\n`;
+    if (data.raw.audience) userPrompt += `Utilisateurs : ${this._audienceLabel(data.raw.audience)}\n`;
+    if (data.raw.outputLanguage) userPrompt += `Langue : ${data.raw.outputLanguage}\n`;
+    userPrompt += '\n';
+
+    if (data.raw.inputDescription) {
+      userPrompt += `## Contexte\n${data.raw.inputDescription}\n\n`;
+    }
+
+    if (data.examples && data.examples.length > 0) {
+      userPrompt += '## Exemples\n\n';
+      data.examples.forEach((ex, i) => {
+        userPrompt += `**Exemple ${i + 1} :**\n`;
+        userPrompt += `Input : ${ex.input}\n`;
+        userPrompt += `Output : ${ex.output}\n\n`;
+      });
+    }
+
+    if (data.raw.smartAnswers && data.raw.smartAnswers.length > 0) {
+      userPrompt += '## Contexte supplementaire\n';
+      data.raw.smartAnswers.forEach(qa => {
+        userPrompt += `- ${qa.question} : ${qa.answer}\n`;
+      });
+      userPrompt += '\n';
+    }
+
+    if (data.chainOfThought) {
+      userPrompt += 'Reflechis etape par etape. Planifie avant de coder.\n\n';
+    }
+
+    userPrompt += `## Tache\n${data.task}\n\n`;
+
+    if (data.raw.constraints) {
+      userPrompt += `## Contraintes\n${data.raw.constraints}\n\n`;
+    }
+
+    userPrompt += `## Format attendu\n${data.format}`;
+
+    const notes = [
+      'Copiez ce prompt dans Claude Code CLI ou dans un fichier CLAUDE.md.',
+      'Claude Code lit le code source avant modification - fournissez les chemins de fichiers.',
+      'Pour les taches complexes, utilisez /plan pour generer un plan avant execution.',
+      'Les sub-agents (Task tool) parallelisent les recherches de code.'
+    ];
+
+    return { systemPrompt, userPrompt, notes };
+  },
+
+  // ===================================================================
   // IMAGE MODELS
   // ===================================================================
 
@@ -468,7 +548,7 @@ const LLMAdapters = {
    */
   renderPreview(adapted, targetModel, mode) {
     mode = mode || 'split';
-    const allConfigs = { ...this.config, ...this.imageConfig, ...this.videoConfig };
+    const allConfigs = { ...this.config, ...this.imageConfig, ...this.videoConfig, ...this.vibeConfig };
     const cfg = allConfigs[targetModel] || { name: targetModel };
     const isMedia = cfg.category === 'image' || cfg.category === 'video';
 

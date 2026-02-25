@@ -51,6 +51,9 @@
         <h3 class="grid-label">Modèles vidéo</h3>
         <div class="llm-grid" id="video-grid"></div>
 
+        <h3 class="grid-label">Vibe Coding</h3>
+        <div class="llm-grid" id="vibe-grid"></div>
+
         <p class="validation-error hidden" id="error-step1">Veuillez sélectionner au moins un modèle.</p>
       </div>
     </section>
@@ -83,7 +86,7 @@
 
         <div class="form-group">
           <label>Domaine / Sujet</label>
-          <div class="multi-select" id="ms-domain" data-field="domain" data-placeholder="-- Choisir un ou plusieurs domaines --" data-autre-placeholder="Ajouter un domaine personnalisé...">
+          <div class="multi-select" id="ms-domain" data-field="domain" data-placeholder="Choisir un ou plusieurs domaines" data-autre-placeholder="Ajouter un domaine personnalisé...">
           </div>
           <select id="domain" class="hidden">
             <option value="">-- Choisir un domaine --</option>
@@ -107,7 +110,7 @@
         <div class="form-row">
           <div class="form-group">
             <label>Public cible</label>
-            <div class="multi-select" id="ms-audience" data-field="audience" data-placeholder="-- Choisir un ou plusieurs publics --" data-autre-placeholder="Ajouter un public personnalisé...">
+            <div class="multi-select" id="ms-audience" data-field="audience" data-placeholder="Choisir un ou plusieurs publics" data-autre-placeholder="Ajouter un public personnalisé...">
             </div>
             <select id="audience" class="hidden">
               <option value="">-- Choisir --</option>
@@ -128,7 +131,7 @@
           </div>
           <div class="form-group">
             <label>Langue de sortie</label>
-            <div class="multi-select" id="ms-output-language" data-field="output-language" data-placeholder="-- Choisir une ou plusieurs langues --" data-autre-placeholder="Ajouter une langue personnalisée...">
+            <div class="multi-select" id="ms-output-language" data-field="output-language" data-placeholder="Choisir une ou plusieurs langues" data-autre-placeholder="Ajouter une langue personnalisée...">
             </div>
             <select id="output-language" class="hidden">
               <option value="francais" selected>Français</option>
@@ -152,7 +155,7 @@
 
         <div class="form-group">
           <label>Ton</label>
-          <div class="multi-select" id="ms-tone" data-field="tone" data-placeholder="-- Choisir un ou plusieurs tons --" data-autre-placeholder="Ajouter un ton personnalisé...">
+          <div class="multi-select" id="ms-tone" data-field="tone" data-placeholder="Choisir un ou plusieurs tons" data-autre-placeholder="Ajouter un ton personnalisé...">
           </div>
           <select id="tone" class="hidden">
             <option value="professionnel" selected>Professionnel</option>
@@ -448,6 +451,15 @@
               <button class="toolbar-tab" id="btn-mode-combined">Prompt combiné</button>
               <span class="toolbar-separator">|</span>
               <button class="toolbar-tab" id="btn-edit-mode">Éditer</button>
+              <span class="toolbar-separator">|</span>
+              <div class="format-select">
+                <button class="toolbar-tab" id="btn-format">Rendu &#9662;</button>
+                <div class="format-menu hidden" id="format-menu">
+                  <button class="format-option active" data-format="rendered">Rendu (HTML)</button>
+                  <button class="format-option" data-format="markdown">Markdown source</button>
+                  <button class="format-option" data-format="plaintext">Texte brut</button>
+                </div>
+              </div>
             </div>
             <div class="token-counter" id="token-counter"></div>
           </div>
@@ -488,6 +500,7 @@
         <div class="llm-tabs" id="llm-tabs-optimize"></div>
 
         <div class="comparison-container" id="comparison-container">
+          <!-- PANEL ORIGINAL -->
           <div class="comparison-panel">
             <div class="comparison-header">
               <h3>Prompt original</h3>
@@ -496,6 +509,15 @@
                 <button class="toolbar-tab" data-panel="original" data-mode="combined">Combiné</button>
                 <span class="toolbar-separator">|</span>
                 <button class="toolbar-tab" data-panel="original" data-mode="edit">Éditer</button>
+                <span class="toolbar-separator">|</span>
+                <div class="format-select">
+                  <button class="toolbar-tab format-btn" data-panel="original">Rendu &#9662;</button>
+                  <div class="format-menu hidden" data-panel="original">
+                    <button class="format-option active" data-format="rendered" data-panel="original">Rendu (HTML)</button>
+                    <button class="format-option" data-format="markdown" data-panel="original">Markdown source</button>
+                    <button class="format-option" data-format="plaintext" data-panel="original">Texte brut</button>
+                  </div>
+                </div>
               </div>
               <div class="token-counter" id="token-counter-original"></div>
             </div>
@@ -506,9 +528,9 @@
               <div class="download-dropdown">
                 <button class="btn-secondary btn-sm" id="btn-download-original">Télécharger</button>
                 <div class="download-menu hidden" id="download-menu-original">
-                  <button class="download-option" data-format="md" data-target="original">.md</button>
-                  <button class="download-option" data-format="txt" data-target="original">.txt</button>
-                  <button class="download-option" data-format="html" data-target="original">.html</button>
+                  <button class="download-option" data-format="md" data-target="original">.md (Markdown)</button>
+                  <button class="download-option" data-format="txt" data-target="original">.txt (Texte brut)</button>
+                  <button class="download-option" data-format="html" data-target="original">.html (Page web)</button>
                 </div>
               </div>
             </div>
@@ -516,6 +538,7 @@
 
           <div class="comparison-divider"></div>
 
+          <!-- PANEL OPTIMISÉ -->
           <div class="comparison-panel">
             <div class="comparison-header">
               <h3>Prompt optimisé par l'IA</h3>
@@ -524,6 +547,15 @@
                 <button class="toolbar-tab" data-panel="optimized" data-mode="combined">Combiné</button>
                 <span class="toolbar-separator">|</span>
                 <button class="toolbar-tab" data-panel="optimized" data-mode="edit">Éditer</button>
+                <span class="toolbar-separator">|</span>
+                <div class="format-select">
+                  <button class="toolbar-tab format-btn" data-panel="optimized">Rendu &#9662;</button>
+                  <div class="format-menu hidden" data-panel="optimized">
+                    <button class="format-option active" data-format="rendered" data-panel="optimized">Rendu (HTML)</button>
+                    <button class="format-option" data-format="markdown" data-panel="optimized">Markdown source</button>
+                    <button class="format-option" data-format="plaintext" data-panel="optimized">Texte brut</button>
+                  </div>
+                </div>
               </div>
               <div class="token-counter" id="token-counter-optimized"></div>
             </div>
@@ -538,16 +570,22 @@
               <div class="download-dropdown">
                 <button class="btn-secondary btn-sm" id="btn-download-optimized" disabled>Télécharger</button>
                 <div class="download-menu hidden" id="download-menu-optimized">
-                  <button class="download-option" data-format="md" data-target="optimized">.md</button>
-                  <button class="download-option" data-format="txt" data-target="optimized">.txt</button>
-                  <button class="download-option" data-format="html" data-target="optimized">.html</button>
+                  <button class="download-option" data-format="md" data-target="optimized">.md (Markdown)</button>
+                  <button class="download-option" data-format="txt" data-target="optimized">.txt (Texte brut)</button>
+                  <button class="download-option" data-format="html" data-target="optimized">.html (Page web)</button>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="action-bar" style="margin-top: var(--space-lg);">
+        <!-- Feedback zone -->
+        <div class="form-group" style="margin-top: var(--space-lg);">
+          <label for="optimize-feedback">Indications pour l'optimisation IA :</label>
+          <textarea id="optimize-feedback" rows="3" placeholder="Ex : 'Rendre le prompt plus concis', 'Ajouter des exemples', 'Structurer en XML'..."></textarea>
+        </div>
+
+        <div class="action-bar" style="margin-top: var(--space-md);">
           <button class="btn-primary btn-with-icon" id="btn-optimize" disabled>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
             Lancer l'optimisation IA
