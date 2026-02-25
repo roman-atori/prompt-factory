@@ -68,7 +68,7 @@ async function callAnthropic(apiKey, systemPrompt, userMessage) {
 async function callOpenAI(apiKey, systemPrompt, userMessage) {
   const client = new OpenAI({ apiKey });
   const response = await client.chat.completions.create({
-    model: 'gpt-4o',
+    model: 'gpt-5.2',
     max_tokens: 4096,
     temperature: 0.3,
     messages: [
@@ -80,7 +80,7 @@ async function callOpenAI(apiKey, systemPrompt, userMessage) {
     text: response.choices[0].message.content,
     inputTokens: response.usage.prompt_tokens,
     outputTokens: response.usage.completion_tokens,
-    model: 'gpt-4o',
+    model: 'gpt-5.2',
     provider: 'openai'
   };
 }

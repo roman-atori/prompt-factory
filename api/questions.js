@@ -41,7 +41,7 @@ async function callAnthropic(apiKey, userMessage) {
 async function callOpenAI(apiKey, userMessage) {
   const client = new OpenAI({ apiKey });
   const response = await client.chat.completions.create({
-    model: 'gpt-4o-mini',
+    model: 'gpt-5.2-mini',
     max_tokens: 1024,
     temperature: 0.5,
     messages: [
