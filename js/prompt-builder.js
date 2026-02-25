@@ -9,9 +9,16 @@
 const PromptBuilder = {
 
   /**
-   * Get value from a select or its "Autre" text input
+   * Get value from a select or its "Autre" text input.
+   * Also checks for multi-select component values.
    */
   _getFieldValue(selectId, autreInputId, fallback) {
+    // Check if there's a multi-select component for this field
+    const ms = document.getElementById('ms-' + selectId);
+    if (ms && ms._selected && ms._selected.length > 0) {
+      return ms._selected.map(s => s.label).join(', ');
+    }
+
     const select = document.getElementById(selectId);
     let value = select ? select.value : '';
     if (value === 'autre') {
@@ -37,11 +44,11 @@ const PromptBuilder = {
     const customTaskType = document.getElementById('custom-task-input').value.trim();
     const persona = document.getElementById('persona').value.trim();
 
-    // Step 3: Context (all using selects + "Autre" pattern)
-    const domain = this._getFieldValue('domain', 'domain-autre', '');
-    const audience = this._getFieldValue('audience', 'audience-autre', '');
-    const outputLanguage = this._getFieldValue('output-language', 'language-autre', 'francais');
-    const tone = this._getFieldValue('tone', 'tone-autre', 'professionnel');
+    // Step 3: Context (multi-select fields)
+    const domain = this._getFieldValue('domain', null, '');
+    const audience = this._getFieldValue('audience', null, '');
+    const outputLanguage = this._getFieldValue('output-language', null, 'francais');
+    const tone = this._getFieldValue('tone', null, 'professionnel');
 
     // Step 4: Task details
     const taskDescription = document.getElementById('task-description').value.trim();
@@ -144,7 +151,7 @@ const PromptBuilder = {
   },
 
   shouldRecommendCoT(taskType) {
-    const complexTasks = ['code', 'analyse', 'classification', 'agent', 'extraction'];
+    const complexTasks = ['code', 'analyse', 'classification', 'agent', 'extraction', 'claude-code', 'n8n'];
     return complexTasks.includes(taskType);
   },
 
@@ -181,6 +188,8 @@ const PromptBuilder = {
       'qa-rag': 'assistant factuel et precis',
       'agent': 'agent IA autonome et methodique',
       'brainstorming': 'consultant creatif',
+      'claude-code': 'expert Claude Code et prompt engineering pour agents IA',
+      'n8n': 'expert n8n et automatisation de workflows IA',
       'image-gen': 'artiste digital',
       'video-gen': 'directeur de la photographie',
       'autre': 'assistant specialise'

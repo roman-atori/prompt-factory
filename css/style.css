@@ -504,6 +504,13 @@ textarea {
   text-align: center;
 }
 
+.task-icon-img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
 .custom-task {
   margin-top: var(--space-md);
 }
@@ -899,6 +906,45 @@ textarea {
   flex-wrap: wrap;
 }
 
+/* Download dropdown */
+.download-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.download-menu {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  z-index: 50;
+  min-width: 160px;
+  overflow: hidden;
+}
+
+.download-option {
+  display: block;
+  width: 100%;
+  padding: 8px 14px;
+  border: none;
+  background: none;
+  text-align: left;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: var(--color-text);
+  transition: background var(--transition-fast);
+}
+
+.download-option:hover {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
 /* AI Status */
 .ai-status {
   display: flex;
@@ -950,11 +996,29 @@ textarea {
   padding: var(--space-sm) var(--space-md);
   background: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+  gap: var(--space-xs);
 }
 
 .comparison-header h3 {
   font-size: 0.85rem;
   font-weight: 600;
+}
+
+.comparison-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.comparison-toolbar .toolbar-tab {
+  padding: 2px 8px;
+  font-size: 0.75rem;
+}
+
+.comparison-editor {
+  min-height: 300px;
+  max-height: 500px;
 }
 
 .comparison-divider {
@@ -1003,6 +1067,10 @@ textarea {
   font-weight: 500;
   font-size: 0.9rem;
   margin-bottom: var(--space-sm);
+}
+
+.smart-answer-autre {
+  margin-top: var(--space-sm);
 }
 
 /* ============================================
@@ -1112,7 +1180,140 @@ textarea {
 }
 
 /* ============================================
-   17. GUIDE HIGHLIGHT (Neon Pulse)
+   17. MULTI-SELECT TAGS
+   ============================================ */
+.multi-select {
+  position: relative;
+  width: 100%;
+}
+
+.multi-select-display {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  min-height: 42px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+  align-items: center;
+}
+
+.multi-select-display:hover {
+  border-color: var(--color-border-hover);
+}
+
+.multi-select.open .multi-select-display {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.multi-select-placeholder {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.ms-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.ms-tag-remove {
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  opacity: 0.6;
+  transition: opacity var(--transition-fast);
+}
+
+.ms-tag-remove:hover {
+  opacity: 1;
+}
+
+.multi-select-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  z-index: 50;
+  max-height: 220px;
+  overflow-y: auto;
+  display: none;
+}
+
+.multi-select.open .multi-select-dropdown {
+  display: block;
+}
+
+.ms-option {
+  padding: 8px 12px;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.ms-option:hover {
+  background: var(--color-bg);
+}
+
+.ms-option.selected {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.ms-option-check {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 3px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.ms-option.selected .ms-option-check {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+  font-size: 0.7rem;
+}
+
+.ms-autre-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-top: 1px solid var(--color-border);
+  font-family: var(--font-sans);
+  font-size: 0.88rem;
+  outline: none;
+}
+
+.ms-autre-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* ============================================
+   18. GUIDE HIGHLIGHT (Neon Pulse)
    ============================================ */
 @keyframes neonPulse {
   0%, 100% {
@@ -1138,6 +1339,20 @@ textarea {
   padding: var(--space-sm);
   margin: calc(-1 * var(--space-sm));
   animation: neonPulse 2s ease-in-out infinite;
+}
+
+/* For radio pill groups */
+.radio-pills.guide-highlight {
+  border: none !important;
+  padding: var(--space-xs);
+  margin: calc(-1 * var(--space-xs));
+  border-radius: var(--radius-md);
+}
+
+/* For multi-select display */
+.multi-select-display.guide-highlight {
+  animation: neonPulse 2s ease-in-out infinite;
+  border-color: rgba(37, 99, 235, 0.6) !important;
 }
 
 /* ============================================
@@ -1192,6 +1407,21 @@ textarea {
   .comparison-divider {
     width: 100%;
     height: 1px;
+  }
+
+  .comparison-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .comparison-toolbar .toolbar-tab {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+  }
+
+  /* Download menu on mobile */
+  .download-menu {
+    right: 0;
+    left: auto;
   }
 
   h1 { font-size: 1.25rem; }

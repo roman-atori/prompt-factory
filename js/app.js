@@ -12,6 +12,7 @@ const App = {
   activeLLMTabOptimize: null,
   editMode: false,
   previewMode: 'split', // 'split' or 'combined'
+  step8Modes: { original: 'split', optimized: 'split' },
   smartQuestionsGenerated: false,
 
   // ===== INITIALIZATION =====
@@ -23,6 +24,7 @@ const App = {
     this.renderImageModelCards();
     this.renderVideoModelCards();
     this.renderTaskCards();
+    this._initMultiSelects();
     this.bindEvents();
     this.updateNavigation();
     this.checkApiKey();
@@ -278,25 +280,30 @@ const App = {
     grid.innerHTML = '';
 
     const tasks = [
-      { key: 'redaction', icon: '\u270D\uFE0F', label: 'Rédaction / Génération' },
-      { key: 'analyse', icon: '\uD83D\uDD0D', label: 'Analyse / Résumé' },
-      { key: 'code', icon: '\uD83D\uDCBB', label: 'Code / Développement' },
-      { key: 'extraction', icon: '\uD83D\uDCE5', label: 'Extraction de données' },
-      { key: 'classification', icon: '\uD83C\uDFF7\uFE0F', label: 'Classification / Tri' },
-      { key: 'traduction', icon: '\uD83C\uDF10', label: 'Traduction / Transformation' },
-      { key: 'qa-rag', icon: '\u2753', label: 'Question-Réponse / RAG' },
-      { key: 'agent', icon: '\uD83E\uDD16', label: 'Agent / Automatisation' },
-      { key: 'brainstorming', icon: '\uD83D\uDCA1', label: 'Brainstorming / Créativité' },
-      { key: 'image-gen', icon: '\uD83C\uDFA8', label: 'Génération d\'images' },
-      { key: 'video-gen', icon: '\uD83C\uDFAC', label: 'Génération de vidéos' },
-      { key: 'autre', icon: '\u2699\uFE0F', label: 'Autre' }
+      { key: 'redaction', icon: '✍️', label: 'Rédaction / Génération' },
+      { key: 'analyse', icon: '🔍', label: 'Analyse / Résumé' },
+      { key: 'code', icon: '💻', label: 'Code / Développement' },
+      { key: 'extraction', icon: '📥', label: 'Extraction de données' },
+      { key: 'classification', icon: '🏷️', label: 'Classification / Tri' },
+      { key: 'traduction', icon: '🌐', label: 'Traduction / Transformation' },
+      { key: 'qa-rag', icon: '❓', label: 'Question-Réponse / RAG' },
+      { key: 'agent', icon: '🤖', label: 'Agent / Automatisation' },
+      { key: 'brainstorming', icon: '💡', label: 'Brainstorming / Créativité' },
+      { key: 'claude-code', icon: 'img/logos/claude-code.png', label: 'Claude Code', isLogo: true },
+      { key: 'n8n', icon: 'img/logos/n8n.png', label: 'n8n / Workflow IA', isLogo: true },
+      { key: 'image-gen', icon: '🎨', label: 'Génération d\'images' },
+      { key: 'video-gen', icon: '🎬', label: 'Génération de vidéos' },
+      { key: 'autre', icon: '⚙️', label: 'Autre' }
     ];
 
     tasks.forEach(t => {
       const card = document.createElement('div');
       card.className = 'task-card';
       card.dataset.task = t.key;
-      card.innerHTML = `<span class="task-icon">${t.icon}</span> ${t.label}`;
+      const iconHtml = t.isLogo
+        ? `<img class="task-icon-img" src="${t.icon}" alt="${t.label}" loading="lazy">`
+        : `<span class="task-icon">${t.icon}</span>`;
+      card.innerHTML = `${iconHtml} ${t.label}`;
       card.addEventListener('click', () => {
         document.querySelectorAll('.task-card').forEach(c => c.classList.remove('selected'));
         card.classList.add('selected');
@@ -439,16 +446,29 @@ const App = {
       if (q.type === 'textarea') {
         fieldHtml = `<textarea class="smart-answer" rows="3" placeholder="${q.placeholder || ''}"></textarea>`;
       } else if (q.type === 'choice' && q.options) {
-        fieldHtml = `<select class="smart-answer">
+        fieldHtml = `<select class="smart-answer smart-answer-select">
           <option value="">-- Choisir --</option>
           ${q.options.map(o => `<option value="${o}">${o}</option>`).join('')}
-        </select>`;
+          <option value="__autre__">Autre (saisie libre)...</option>
+        </select>
+        <input type="text" class="smart-answer-autre autre-input hidden" placeholder="Votre réponse personnalisée...">`;
       } else {
         fieldHtml = `<input type="text" class="smart-answer" placeholder="${q.placeholder || ''}">`;
       }
 
       div.innerHTML = `<label>${q.question}</label>${fieldHtml}`;
       listDiv.appendChild(div);
+
+      // Bind "Autre" toggle for choice questions
+      const select = div.querySelector('.smart-answer-select');
+      const autreInput = div.querySelector('.smart-answer-autre');
+      if (select && autreInput) {
+        select.addEventListener('change', () => {
+          const isAutre = select.value === '__autre__';
+          autreInput.classList.toggle('hidden', !isAutre);
+          if (isAutre) autreInput.focus();
+        });
+      }
     });
 
     listDiv.classList.remove('hidden');
@@ -459,7 +479,14 @@ const App = {
     document.querySelectorAll('.smart-question').forEach(q => {
       const id = q.dataset.questionId;
       const input = q.querySelector('.smart-answer');
-      const value = input ? input.value.trim() : '';
+      let value = input ? input.value.trim() : '';
+
+      // If select has "autre" chosen, use the free-text input value
+      if (value === '__autre__') {
+        const autreInput = q.querySelector('.smart-answer-autre');
+        value = autreInput ? autreInput.value.trim() : '';
+      }
+
       if (value) {
         const label = q.querySelector('label').textContent;
         answers.push({ question: label, answer: value });
@@ -604,27 +631,78 @@ const App = {
     });
 
     // Show original prompt on the left
-    const original = this.originalPrompts[llmKey];
-    const originalMd = LLMAdapters.renderPreview(original, llmKey, 'split');
-    document.getElementById('preview-original').innerHTML = UIHelpers.renderMarkdown(originalMd);
-
-    const originalRaw = LLMAdapters.getRawPrompt(original);
-    const originalTokens = UIHelpers.estimateTokens(originalRaw);
-    document.getElementById('token-counter-original').textContent = `~${originalTokens} tokens`;
+    this._renderComparisonPanel('original', llmKey);
 
     // Check if we have an optimized version
     if (this.generatedPrompts[llmKey] && this.generatedPrompts[llmKey]._optimized) {
-      const optimizedMd = this.generatedPrompts[llmKey]._optimizedMarkdown;
-      document.getElementById('preview-optimized').innerHTML = UIHelpers.renderMarkdown(optimizedMd);
-      const optimizedTokens = UIHelpers.estimateTokens(optimizedMd);
-      document.getElementById('token-counter-optimized').textContent = `~${optimizedTokens} tokens`;
+      this._renderComparisonPanel('optimized', llmKey);
       document.getElementById('btn-copy-optimized').disabled = false;
       document.getElementById('btn-download-optimized').disabled = false;
     } else {
       document.getElementById('preview-optimized').innerHTML = '<div class="comparison-placeholder"><p>Cliquez sur « Lancer l\'optimisation » pour voir le resultat ici.</p></div>';
+      document.getElementById('editor-optimized').classList.add('hidden');
+      document.getElementById('preview-optimized').classList.remove('hidden');
       document.getElementById('token-counter-optimized').textContent = '';
       document.getElementById('btn-copy-optimized').disabled = true;
       document.getElementById('btn-download-optimized').disabled = true;
+    }
+  },
+
+  _renderComparisonPanel(panel, llmKey) {
+    const mode = this.step8Modes[panel];
+    const preview = document.getElementById(`preview-${panel}`);
+    const editor = document.getElementById(`editor-${panel}`);
+
+    let content;
+    if (panel === 'original') {
+      content = this.originalPrompts[llmKey];
+    } else {
+      content = this.generatedPrompts[llmKey];
+    }
+
+    if (!content) return;
+
+    if (panel === 'optimized' && content._optimizedMarkdown) {
+      // Optimized panel uses raw markdown
+      const md = content._optimizedMarkdown;
+      if (mode === 'edit') {
+        editor.value = md;
+        editor.classList.remove('hidden');
+        preview.classList.add('hidden');
+      } else {
+        preview.innerHTML = UIHelpers.renderMarkdown(md);
+        preview.classList.remove('hidden');
+        editor.classList.add('hidden');
+      }
+      const tokens = UIHelpers.estimateTokens(md);
+      document.getElementById('token-counter-optimized').textContent = `~${tokens} tokens`;
+    } else if (panel === 'original') {
+      const md = LLMAdapters.renderPreview(content, llmKey, mode === 'combined' ? 'combined' : 'split');
+      if (mode === 'edit') {
+        editor.value = md;
+        editor.classList.remove('hidden');
+        preview.classList.add('hidden');
+      } else {
+        preview.innerHTML = UIHelpers.renderMarkdown(md);
+        preview.classList.remove('hidden');
+        editor.classList.add('hidden');
+      }
+      const rawText = LLMAdapters.getRawPrompt(content);
+      const tokens = UIHelpers.estimateTokens(rawText);
+      document.getElementById('token-counter-original').textContent = `~${tokens} tokens`;
+    }
+
+    // Update toolbar active states
+    document.querySelectorAll(`.comparison-toolbar .toolbar-tab[data-panel="${panel}"]`).forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === mode);
+    });
+  },
+
+  _setComparisonMode(panel, mode) {
+    this.step8Modes[panel] = mode;
+    const llmKey = this.activeLLMTabOptimize;
+    if (llmKey) {
+      this._renderComparisonPanel(panel, llmKey);
     }
   },
 
@@ -672,10 +750,8 @@ const App = {
       this.generatedPrompts[llmKey]._optimized = true;
       this.generatedPrompts[llmKey]._optimizedMarkdown = result.optimizedPrompt;
 
-      // Update right panel
-      document.getElementById('preview-optimized').innerHTML = UIHelpers.renderMarkdown(result.optimizedPrompt);
-      const tokens = UIHelpers.estimateTokens(result.optimizedPrompt);
-      document.getElementById('token-counter-optimized').textContent = `~${tokens} tokens`;
+      // Update right panel using the mode system
+      this._renderComparisonPanel('optimized', llmKey);
       document.getElementById('btn-copy-optimized').disabled = false;
       document.getElementById('btn-download-optimized').disabled = false;
 
@@ -757,9 +833,230 @@ const App = {
     UIHelpers.showToast('Toutes les donnees ont ete effacees.', 'info');
   },
 
+  resetAll() {
+    // Reset state
+    this.currentStep = 1;
+    this.generatedPrompts = {};
+    this.originalPrompts = {};
+    this.activeLLMTab = null;
+    this.activeLLMTabOptimize = null;
+    this.editMode = false;
+    this.previewMode = 'split';
+    this.smartQuestionsGenerated = false;
+
+    // Deselect all cards
+    document.querySelectorAll('.llm-card.selected, .task-card.selected').forEach(c => c.classList.remove('selected'));
+
+    // Reset all form fields
+    document.querySelectorAll('input[type="text"], textarea').forEach(el => { el.value = ''; });
+    document.querySelectorAll('select').forEach(el => { el.selectedIndex = 0; });
+    document.querySelectorAll('.autre-input').forEach(el => el.classList.add('hidden'));
+    this._resetMultiSelects();
+
+    // Reset radios to defaults
+    const defaultRadios = { 'complexity': 'basic', 'output-length': 'moyen', 'img-quality': 'standard' };
+    Object.entries(defaultRadios).forEach(([name, val]) => {
+      const radio = document.querySelector(`input[name="${name}"][value="${val}"]`);
+      if (radio) radio.checked = true;
+    });
+
+    // Reset toggles
+    const fewShot = document.getElementById('few-shot-toggle');
+    if (fewShot) { fewShot.checked = false; }
+    document.getElementById('few-shot-content')?.classList.add('hidden');
+    document.getElementById('few-shot-examples').innerHTML = '';
+    const cot = document.getElementById('cot-toggle');
+    if (cot) { cot.checked = false; delete cot.dataset.manuallyChanged; }
+
+    // Reset smart questions
+    document.getElementById('smart-questions-list').innerHTML = '';
+    document.getElementById('smart-questions-list')?.classList.add('hidden');
+
+    // Hide custom task
+    document.getElementById('custom-task')?.classList.add('hidden');
+
+    // Hide conditional fields
+    document.getElementById('text-fields')?.classList.remove('hidden');
+    document.getElementById('image-fields')?.classList.add('hidden');
+    document.getElementById('video-fields')?.classList.add('hidden');
+
+    // Show step 1
+    this.showStep(1);
+    UIHelpers.showToast('Formulaire reinitialise.', 'info');
+  },
+
+  // ===== DOWNLOAD FORMAT =====
+
+  _downloadInFormat(content, baseName, format) {
+    switch (format) {
+      case 'txt':
+        UIHelpers.downloadAsText(content, `${baseName}.txt`);
+        break;
+      case 'html':
+        UIHelpers.downloadAsHTML(content, `${baseName}.html`, baseName);
+        break;
+      case 'md':
+      default:
+        UIHelpers.downloadAsMarkdown(content, `${baseName}.md`);
+        break;
+    }
+    UIHelpers.showToast('Fichier telecharge.', 'success');
+  },
+
+  // ===== MULTI-SELECT TAGS (Step 3) =====
+
+  _initMultiSelects() {
+    document.querySelectorAll('.multi-select').forEach(ms => {
+      const field = ms.dataset.field;
+      const select = document.getElementById(field);
+      if (!select) return;
+
+      const placeholder = ms.dataset.placeholder || '-- Choisir --';
+      const autrePlaceholder = ms.dataset.autrePlaceholder || 'Ajouter...';
+
+      // Build options from the hidden select
+      const options = [];
+      select.querySelectorAll('option').forEach(opt => {
+        if (opt.value) options.push({ value: opt.value, label: opt.textContent });
+      });
+
+      // State
+      ms._selected = [];
+      ms._options = options;
+
+      // Build display area
+      const display = document.createElement('div');
+      display.className = 'multi-select-display';
+      display.innerHTML = `<span class="multi-select-placeholder">${placeholder}</span>`;
+
+      // Build dropdown
+      const dropdown = document.createElement('div');
+      dropdown.className = 'multi-select-dropdown';
+
+      options.forEach(opt => {
+        const item = document.createElement('div');
+        item.className = 'ms-option';
+        item.dataset.value = opt.value;
+        item.innerHTML = `<span class="ms-option-check"></span>${opt.label}`;
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this._toggleMultiOption(ms, opt.value, opt.label);
+        });
+        dropdown.appendChild(item);
+      });
+
+      // Autre input at bottom
+      const autreInput = document.createElement('input');
+      autreInput.type = 'text';
+      autreInput.className = 'ms-autre-input';
+      autreInput.placeholder = autrePlaceholder;
+      autreInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const val = autreInput.value.trim();
+          if (val && !ms._selected.find(s => s.label === val)) {
+            this._toggleMultiOption(ms, 'custom-' + val.toLowerCase().replace(/\s+/g, '-'), val);
+            autreInput.value = '';
+          }
+        }
+      });
+      autreInput.addEventListener('click', (e) => e.stopPropagation());
+      dropdown.appendChild(autreInput);
+
+      ms.appendChild(display);
+      ms.appendChild(dropdown);
+
+      // Toggle dropdown on display click
+      display.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const wasOpen = ms.classList.contains('open');
+        // Close all others
+        document.querySelectorAll('.multi-select.open').forEach(m => m.classList.remove('open'));
+        if (!wasOpen) ms.classList.add('open');
+      });
+    });
+
+    // Close dropdowns on outside click
+    document.addEventListener('click', () => {
+      document.querySelectorAll('.multi-select.open').forEach(m => m.classList.remove('open'));
+    });
+  },
+
+  _toggleMultiOption(ms, value, label) {
+    const idx = ms._selected.findIndex(s => s.value === value);
+    if (idx >= 0) {
+      ms._selected.splice(idx, 1);
+    } else {
+      ms._selected.push({ value, label });
+    }
+    this._renderMultiSelect(ms);
+
+    // Update highlight
+    if (ms._selected.length > 0) {
+      ms.querySelector('.multi-select-display').classList.remove('guide-highlight');
+    }
+  },
+
+  _renderMultiSelect(ms) {
+    const display = ms.querySelector('.multi-select-display');
+    const placeholder = ms.dataset.placeholder || '-- Choisir --';
+
+    if (ms._selected.length === 0) {
+      display.innerHTML = `<span class="multi-select-placeholder">${placeholder}</span>`;
+    } else {
+      display.innerHTML = ms._selected.map(s =>
+        `<span class="ms-tag">${s.label}<span class="ms-tag-remove" data-value="${s.value}">&times;</span></span>`
+      ).join('');
+
+      // Bind remove
+      display.querySelectorAll('.ms-tag-remove').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this._toggleMultiOption(ms, btn.dataset.value, '');
+        });
+      });
+    }
+
+    // Update dropdown checkmarks
+    ms.querySelectorAll('.ms-option').forEach(opt => {
+      const isSelected = ms._selected.some(s => s.value === opt.dataset.value);
+      opt.classList.toggle('selected', isSelected);
+      opt.querySelector('.ms-option-check').textContent = isSelected ? '✓' : '';
+    });
+
+    // Sync hidden select value (joined for backward compat)
+    const field = ms.dataset.field;
+    const select = document.getElementById(field);
+    if (select) {
+      select.value = ms._selected.map(s => s.value).join(', ');
+    }
+  },
+
+  _getMultiSelectValues(msId) {
+    const ms = document.getElementById(msId);
+    if (!ms || !ms._selected) return [];
+    return ms._selected.map(s => s.label);
+  },
+
+  _resetMultiSelects() {
+    document.querySelectorAll('.multi-select').forEach(ms => {
+      if (ms._selected) ms._selected = [];
+      this._renderMultiSelect(ms);
+    });
+  },
+
   // ===== GUIDE HIGHLIGHTS (Permanent) =====
 
   _highlightIfEmpty(id) {
+    // Check for multi-select first
+    const ms = document.getElementById('ms-' + id);
+    if (ms && ms._selected !== undefined) {
+      if (ms._selected.length === 0) {
+        ms.querySelector('.multi-select-display')?.classList.add('guide-highlight');
+      }
+      return;
+    }
+
     const el = document.getElementById(id);
     if (!el) return;
     if (el.tagName === 'SELECT') {
@@ -824,6 +1121,29 @@ const App = {
         }
         break;
       }
+      case 5: {
+        // Highlight complexity pills if default (basic)
+        const complexity = document.querySelector('input[name="complexity"]:checked');
+        if (complexity && complexity.value === 'basic') {
+          document.getElementById('complexity-group')?.classList.add('guide-highlight');
+        }
+        // Highlight length pills if default (moyen)
+        const length = document.querySelector('input[name="output-length"]:checked');
+        if (length && length.value === 'moyen') {
+          document.getElementById('length-group')?.classList.add('guide-highlight');
+        }
+        break;
+      }
+      case 6: {
+        // Highlight unanswered smart questions
+        document.querySelectorAll('.smart-question').forEach(q => {
+          const input = q.querySelector('.smart-answer');
+          if (input && !input.value.trim()) {
+            input.classList.add('guide-highlight');
+          }
+        });
+        break;
+      }
     }
   },
 
@@ -849,6 +1169,11 @@ const App = {
       if (e.target.classList.contains('guide-highlight') && e.target.tagName === 'SELECT') {
         if (e.target.value) e.target.classList.remove('guide-highlight');
       }
+      // Remove glow from radio pill groups
+      if (e.target.type === 'radio') {
+        const group = e.target.closest('.radio-pills');
+        if (group) group.classList.remove('guide-highlight');
+      }
     });
   },
 
@@ -859,11 +1184,10 @@ const App = {
     document.getElementById('btn-next').addEventListener('click', () => this.nextStep());
     document.getElementById('btn-prev').addEventListener('click', () => this.prevStep());
 
-    // Logo -> home (step 1)
+    // Logo -> full reset (like page refresh)
     document.getElementById('logo-home').addEventListener('click', (e) => {
       e.preventDefault();
-      this.currentStep = 1;
-      this.showStep(1);
+      this.resetAll();
     });
 
     // Settings modal
@@ -888,11 +1212,7 @@ const App = {
       if (e.target.classList.contains('modal-overlay')) this.closeSettings();
     });
 
-    // "Autre" pattern bindings
-    this._bindAutrePattern('domain', 'domain-autre');
-    this._bindAutrePattern('audience', 'audience-autre');
-    this._bindAutrePattern('output-language', 'language-autre');
-    this._bindAutrePattern('tone', 'tone-autre');
+    // "Autre" pattern bindings (only for non-multi-select fields)
     this._bindAutrePattern('output-format', 'output-format-autre');
 
     // Few-shot toggle
@@ -936,15 +1256,32 @@ const App = {
       });
     });
 
-    document.getElementById('btn-download').addEventListener('click', () => {
+    document.getElementById('btn-download').addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.getElementById('download-menu').classList.toggle('hidden');
+    });
+
+    document.getElementById('download-menu').addEventListener('click', (e) => {
+      const opt = e.target.closest('.download-option');
+      if (!opt) return;
+      const format = opt.dataset.format;
       const text = document.getElementById('prompt-editor').value;
       const model = this.activeLLMTab || 'prompt';
-      UIHelpers.downloadAsMarkdown(text, `prompt-${model}.md`);
-      UIHelpers.showToast('Fichier telecharge.', 'success');
+      this._downloadInFormat(text, `prompt-${model}`, format);
+      document.getElementById('download-menu').classList.add('hidden');
     });
 
     // Step 7: Feedback
     document.getElementById('btn-apply-feedback').addEventListener('click', () => this.applyFeedback());
+
+    // Step 8: Comparison panel mode tabs
+    document.querySelectorAll('.comparison-toolbar .toolbar-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const panel = btn.dataset.panel;
+        const mode = btn.dataset.mode;
+        this._setComparisonMode(panel, mode);
+      });
+    });
 
     // Step 8: Optimize
     document.getElementById('btn-optimize').addEventListener('click', () => this.optimizeWithAI());
@@ -953,42 +1290,70 @@ const App = {
     document.getElementById('btn-copy-original').addEventListener('click', () => {
       const llmKey = this.activeLLMTabOptimize;
       if (llmKey && this.originalPrompts[llmKey]) {
-        const text = LLMAdapters.getRawPrompt(this.originalPrompts[llmKey]);
+        const editorEl = document.getElementById('editor-original');
+        const text = (this.step8Modes.original === 'edit' && !editorEl.classList.contains('hidden'))
+          ? editorEl.value
+          : LLMAdapters.getRawPrompt(this.originalPrompts[llmKey]);
         UIHelpers.copyToClipboard(text).then(() => {
           UIHelpers.showToast('Prompt original copie !', 'success');
         });
       }
     });
 
-    document.getElementById('btn-download-original').addEventListener('click', () => {
+    document.getElementById('btn-download-original').addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.getElementById('download-menu-original').classList.toggle('hidden');
+    });
+
+    document.getElementById('download-menu-original').addEventListener('click', (e) => {
+      const opt = e.target.closest('.download-option');
+      if (!opt) return;
+      const format = opt.dataset.format;
       const llmKey = this.activeLLMTabOptimize;
       if (llmKey && this.originalPrompts[llmKey]) {
         const text = LLMAdapters.getRawPrompt(this.originalPrompts[llmKey]);
-        UIHelpers.downloadAsMarkdown(text, `prompt-original-${llmKey}.md`);
-        UIHelpers.showToast('Fichier telecharge.', 'success');
+        this._downloadInFormat(text, `prompt-original-${llmKey}`, format);
       }
+      document.getElementById('download-menu-original').classList.add('hidden');
     });
 
     // Step 8: Copy/Download optimized
     document.getElementById('btn-copy-optimized').addEventListener('click', () => {
       const llmKey = this.activeLLMTabOptimize;
       if (llmKey && this.generatedPrompts[llmKey] && this.generatedPrompts[llmKey]._optimizedMarkdown) {
-        UIHelpers.copyToClipboard(this.generatedPrompts[llmKey]._optimizedMarkdown).then(() => {
+        const editorEl = document.getElementById('editor-optimized');
+        const text = (this.step8Modes.optimized === 'edit' && !editorEl.classList.contains('hidden'))
+          ? editorEl.value
+          : this.generatedPrompts[llmKey]._optimizedMarkdown;
+        UIHelpers.copyToClipboard(text).then(() => {
           UIHelpers.showToast('Prompt optimise copie !', 'success');
         });
       }
     });
 
-    document.getElementById('btn-download-optimized').addEventListener('click', () => {
+    document.getElementById('btn-download-optimized').addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.getElementById('download-menu-optimized').classList.toggle('hidden');
+    });
+
+    document.getElementById('download-menu-optimized').addEventListener('click', (e) => {
+      const opt = e.target.closest('.download-option');
+      if (!opt) return;
+      const format = opt.dataset.format;
       const llmKey = this.activeLLMTabOptimize;
       if (llmKey && this.generatedPrompts[llmKey] && this.generatedPrompts[llmKey]._optimizedMarkdown) {
-        UIHelpers.downloadAsMarkdown(this.generatedPrompts[llmKey]._optimizedMarkdown, `prompt-optimise-${llmKey}.md`);
-        UIHelpers.showToast('Fichier telecharge.', 'success');
+        this._downloadInFormat(this.generatedPrompts[llmKey]._optimizedMarkdown, `prompt-optimise-${llmKey}`, format);
       }
+      document.getElementById('download-menu-optimized').classList.add('hidden');
     });
 
     // Bind guide highlight listeners
     this._bindGuideListeners();
+
+    // Close download menus on outside click
+    document.addEventListener('click', () => {
+      document.querySelectorAll('.download-menu').forEach(m => m.classList.add('hidden'));
+    });
 
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {

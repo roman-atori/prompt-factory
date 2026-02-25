@@ -79,11 +79,13 @@
     <section class="wizard-step" id="step-3" data-step="3">
       <div class="step-card">
         <h2>Contexte et audience</h2>
-        <p class="step-description">Qui va lire la réponse ? Dans quel contexte ?</p>
+        <p class="step-description">Qui va lire la réponse ? Dans quel contexte ? Vous pouvez sélectionner plusieurs options.</p>
 
         <div class="form-group">
-          <label for="domain">Domaine / Sujet</label>
-          <select id="domain">
+          <label>Domaine / Sujet</label>
+          <div class="multi-select" id="ms-domain" data-field="domain" data-placeholder="-- Choisir un ou plusieurs domaines --" data-autre-placeholder="Ajouter un domaine personnalisé...">
+          </div>
+          <select id="domain" class="hidden">
             <option value="">-- Choisir un domaine --</option>
             <option value="marketing-digital">Marketing digital</option>
             <option value="developpement-web">Développement web</option>
@@ -99,15 +101,15 @@
             <option value="immobilier">Immobilier</option>
             <option value="logistique">Logistique / Supply chain</option>
             <option value="cybersecurite">Cybersécurité</option>
-            <option value="autre">Autre...</option>
           </select>
-          <input type="text" id="domain-autre" class="autre-input hidden" placeholder="Précisez votre domaine...">
         </div>
 
         <div class="form-row">
           <div class="form-group">
-            <label for="audience">Public cible</label>
-            <select id="audience">
+            <label>Public cible</label>
+            <div class="multi-select" id="ms-audience" data-field="audience" data-placeholder="-- Choisir un ou plusieurs publics --" data-autre-placeholder="Ajouter un public personnalisé...">
+            </div>
+            <select id="audience" class="hidden">
               <option value="">-- Choisir --</option>
               <option value="general">Grand public</option>
               <option value="technical">Développeurs / Technique</option>
@@ -122,13 +124,13 @@
               <option value="sales">Commerciaux / Ventes</option>
               <option value="legal">Juristes</option>
               <option value="medical">Professionnels de santé</option>
-              <option value="autre">Autre...</option>
             </select>
-            <input type="text" id="audience-autre" class="autre-input hidden" placeholder="Précisez le public cible...">
           </div>
           <div class="form-group">
-            <label for="output-language">Langue de sortie</label>
-            <select id="output-language">
+            <label>Langue de sortie</label>
+            <div class="multi-select" id="ms-output-language" data-field="output-language" data-placeholder="-- Choisir une ou plusieurs langues --" data-autre-placeholder="Ajouter une langue personnalisée...">
+            </div>
+            <select id="output-language" class="hidden">
               <option value="francais" selected>Français</option>
               <option value="english">English</option>
               <option value="espanol">Español</option>
@@ -144,15 +146,15 @@
               <option value="polish">Polski (Polonais)</option>
               <option value="turkish">Türkçe (Turc)</option>
               <option value="hindi">हिन्दी (Hindi)</option>
-              <option value="autre">Autre...</option>
             </select>
-            <input type="text" id="language-autre" class="autre-input hidden" placeholder="Précisez la langue...">
           </div>
         </div>
 
         <div class="form-group">
-          <label for="tone">Ton</label>
-          <select id="tone">
+          <label>Ton</label>
+          <div class="multi-select" id="ms-tone" data-field="tone" data-placeholder="-- Choisir un ou plusieurs tons --" data-autre-placeholder="Ajouter un ton personnalisé...">
+          </div>
+          <select id="tone" class="hidden">
             <option value="professionnel" selected>Professionnel</option>
             <option value="decontracte">Décontracté</option>
             <option value="creatif">Créatif</option>
@@ -167,9 +169,7 @@
             <option value="diplomatique">Diplomatique</option>
             <option value="inspirant">Inspirant</option>
             <option value="neutre">Neutre / Objectif</option>
-            <option value="autre">Autre...</option>
           </select>
-          <input type="text" id="tone-autre" class="autre-input hidden" placeholder="Précisez le ton souhaité...">
         </div>
       </div>
     </section>
@@ -466,7 +466,14 @@
         <!-- Action buttons -->
         <div class="action-bar">
           <button class="btn-secondary" id="btn-copy">Copier</button>
-          <button class="btn-secondary" id="btn-download">Télécharger .md</button>
+          <div class="download-dropdown">
+            <button class="btn-secondary" id="btn-download">Télécharger</button>
+            <div class="download-menu hidden" id="download-menu">
+              <button class="download-option" data-format="md">.md (Markdown)</button>
+              <button class="download-option" data-format="txt">.txt (Texte brut)</button>
+              <button class="download-option" data-format="html">.html (Page web)</button>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -484,12 +491,26 @@
           <div class="comparison-panel">
             <div class="comparison-header">
               <h3>Prompt original</h3>
+              <div class="comparison-toolbar">
+                <button class="toolbar-tab active" data-panel="original" data-mode="split">System + User</button>
+                <button class="toolbar-tab" data-panel="original" data-mode="combined">Combiné</button>
+                <span class="toolbar-separator">|</span>
+                <button class="toolbar-tab" data-panel="original" data-mode="edit">Éditer</button>
+              </div>
               <div class="token-counter" id="token-counter-original"></div>
             </div>
+            <textarea class="prompt-editor comparison-editor hidden" id="editor-original" rows="15"></textarea>
             <div class="prompt-preview comparison-preview" id="preview-original"></div>
             <div class="comparison-actions">
               <button class="btn-secondary btn-sm" id="btn-copy-original">Copier</button>
-              <button class="btn-secondary btn-sm" id="btn-download-original">Télécharger .md</button>
+              <div class="download-dropdown">
+                <button class="btn-secondary btn-sm" id="btn-download-original">Télécharger</button>
+                <div class="download-menu hidden" id="download-menu-original">
+                  <button class="download-option" data-format="md" data-target="original">.md</button>
+                  <button class="download-option" data-format="txt" data-target="original">.txt</button>
+                  <button class="download-option" data-format="html" data-target="original">.html</button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -498,8 +519,15 @@
           <div class="comparison-panel">
             <div class="comparison-header">
               <h3>Prompt optimisé par l'IA</h3>
+              <div class="comparison-toolbar">
+                <button class="toolbar-tab active" data-panel="optimized" data-mode="split">System + User</button>
+                <button class="toolbar-tab" data-panel="optimized" data-mode="combined">Combiné</button>
+                <span class="toolbar-separator">|</span>
+                <button class="toolbar-tab" data-panel="optimized" data-mode="edit">Éditer</button>
+              </div>
               <div class="token-counter" id="token-counter-optimized"></div>
             </div>
+            <textarea class="prompt-editor comparison-editor hidden" id="editor-optimized" rows="15"></textarea>
             <div class="prompt-preview comparison-preview" id="preview-optimized">
               <div class="comparison-placeholder">
                 <p>Cliquez sur « Lancer l'optimisation » pour voir le résultat ici.</p>
@@ -507,7 +535,14 @@
             </div>
             <div class="comparison-actions">
               <button class="btn-secondary btn-sm" id="btn-copy-optimized" disabled>Copier</button>
-              <button class="btn-secondary btn-sm" id="btn-download-optimized" disabled>Télécharger .md</button>
+              <div class="download-dropdown">
+                <button class="btn-secondary btn-sm" id="btn-download-optimized" disabled>Télécharger</button>
+                <div class="download-menu hidden" id="download-menu-optimized">
+                  <button class="download-option" data-format="md" data-target="optimized">.md</button>
+                  <button class="download-option" data-format="txt" data-target="optimized">.txt</button>
+                  <button class="download-option" data-format="html" data-target="optimized">.html</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
