@@ -26,6 +26,12 @@ const App = {
     this.bindEvents();
     this.updateNavigation();
     this.checkApiKey();
+    this._updateGuideHighlights();
+
+    // Auto-start tutorial on first visit
+    if (!localStorage.getItem('pf_tutorial_seen')) {
+      setTimeout(() => this.startTutorial(), 600);
+    }
   },
 
   // ===== STEP INDICATORS =====
@@ -100,6 +106,7 @@ const App = {
     if (target) target.classList.add('active');
     this.updateStepIndicators();
     this.updateNavigation();
+    this._updateGuideHighlights();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   },
 
@@ -755,6 +762,225 @@ const App = {
     UIHelpers.showToast('Toutes les donnees ont ete effacees.', 'info');
   },
 
+  // ===== GUIDE HIGHLIGHTS (Permanent) =====
+
+  _updateGuideHighlights() {
+    // Clear all previous highlights
+    document.querySelectorAll('.guide-highlight, .guide-highlight-grid').forEach(el => {
+      el.classList.remove('guide-highlight', 'guide-highlight-grid');
+    });
+
+    switch (this.currentStep) {
+      case 1: {
+        const hasSelected = document.querySelectorAll('.llm-card.selected').length > 0;
+        if (!hasSelected) {
+          document.getElementById('llm-grid').classList.add('guide-highlight-grid');
+        }
+        break;
+      }
+      case 2: {
+        const hasTask = document.querySelector('.task-card.selected');
+        if (!hasTask) {
+          document.getElementById('task-grid').classList.add('guide-highlight-grid');
+        }
+        break;
+      }
+      case 4: {
+        const selected = this._getSelectedModels();
+        const hasText = PromptBuilder.hasTextModel(selected);
+        const hasImage = PromptBuilder.hasImageModel(selected);
+        const hasVideo = PromptBuilder.hasVideoModel(selected);
+
+        if (hasText) {
+          const el = document.getElementById('task-description');
+          if (el && !el.value.trim()) el.classList.add('guide-highlight');
+        }
+        if (hasImage) {
+          const el = document.getElementById('img-subject');
+          if (el && !el.value.trim()) el.classList.add('guide-highlight');
+        }
+        if (hasVideo) {
+          const el = document.getElementById('vid-subject');
+          if (el && !el.value.trim()) el.classList.add('guide-highlight');
+        }
+        break;
+      }
+    }
+  },
+
+  _bindGuideListeners() {
+    // Remove grid highlight when a card is selected (step 1 & 2)
+    document.addEventListener('click', (e) => {
+      const card = e.target.closest('.llm-card, .task-card');
+      if (card) {
+        const grid = card.closest('.llm-grid, .task-grid');
+        if (grid) grid.classList.remove('guide-highlight-grid');
+      }
+    });
+
+    // Remove field highlight on input (step 4)
+    ['task-description', 'img-subject', 'vid-subject'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('input', () => {
+          if (el.value.trim()) el.classList.remove('guide-highlight');
+        });
+      }
+    });
+  },
+
+  // ===== TUTORIAL (Interactive) =====
+
+  _tutorialCurrentIndex: 0,
+  _tutorialActive: false,
+
+  _getTutorialSteps() {
+    const steps = [];
+    switch (this.currentStep) {
+      case 1:
+        steps.push(
+          { selector: '#llm-grid', text: 'Choisissez un ou plusieurs modeles de texte parmi Claude, ChatGPT, Gemini ou Perplexity.' },
+          { selector: '#image-grid', text: 'Optionnel : selectionnez un modele de generation d\'images (FLUX, Stable Diffusion, Nano Banana).' },
+          { selector: '#video-grid', text: 'Optionnel : selectionnez Veo pour la generation de videos.' }
+        );
+        break;
+      case 2:
+        steps.push(
+          { selector: '#task-grid', text: 'Selectionnez le type de tache que votre prompt doit accomplir (redaction, code, analyse...).' },
+          { selector: '#persona', text: 'Optionnel : decrivez le role que le LLM doit adopter. Sinon, un persona sera genere automatiquement.' }
+        );
+        break;
+      case 3:
+        steps.push(
+          { selector: '#domain', text: 'Choisissez le domaine d\'application. Selectionnez "Autre" pour saisir un domaine personnalise.' },
+          { selector: '#audience', text: 'A qui s\'adresse la reponse ? Cela adapte le vocabulaire et le niveau de detail.' },
+          { selector: '#output-language', text: 'Dans quelle langue le LLM doit-il repondre ?' },
+          { selector: '#tone', text: 'Le ton influence le style de la reponse : professionnel, creatif, pedagogique...' }
+        );
+        break;
+      case 4:
+        steps.push(
+          { selector: '#task-description', text: 'Decrivez precisement ce que le LLM doit faire. Plus c\'est precis, meilleur sera le prompt.' }
+        );
+        if (document.getElementById('input-description') && !document.getElementById('text-fields').classList.contains('hidden')) {
+          steps.push({ selector: '#input-description', text: 'Decrivez les donnees que l\'utilisateur fournira au LLM (texte, tableau, URL...).' });
+        }
+        if (document.getElementById('output-format') && !document.getElementById('text-fields').classList.contains('hidden')) {
+          steps.push({ selector: '#output-format', text: 'Choisissez le format de sortie souhaite : texte, JSON, Markdown, code...' });
+        }
+        break;
+      case 5:
+        steps.push(
+          { selector: '.radio-pills', text: 'Choisissez le niveau de complexite du prompt. "Expert" ajoute des mecanismes de controle avances.' },
+          { selector: '#few-shot-toggle', text: 'Activez le few-shot pour fournir des exemples entree/sortie au LLM. Tres efficace !' },
+          { selector: '#cot-toggle', text: 'Le Chain-of-Thought force le LLM a raisonner etape par etape avant de repondre.' }
+        );
+        break;
+      default:
+        steps.push(
+          { selector: '.step-card', text: 'Cette etape est automatique. Suivez les instructions a l\'ecran.' }
+        );
+    }
+    return steps;
+  },
+
+  startTutorial() {
+    const steps = this._getTutorialSteps();
+    if (steps.length === 0) return;
+
+    this._tutorialActive = true;
+    this._tutorialCurrentIndex = 0;
+
+    const overlay = document.getElementById('tutorial-overlay');
+    overlay.classList.remove('hidden');
+
+    this._showTutorialStep(0);
+  },
+
+  _showTutorialStep(index) {
+    const steps = this._getTutorialSteps();
+    if (index < 0 || index >= steps.length) {
+      this._closeTutorial();
+      return;
+    }
+
+    this._tutorialCurrentIndex = index;
+    const step = steps[index];
+    const targetEl = document.querySelector(step.selector);
+
+    if (!targetEl) {
+      // Skip invisible elements
+      if (index < steps.length - 1) {
+        this._showTutorialStep(index + 1);
+      } else {
+        this._closeTutorial();
+      }
+      return;
+    }
+
+    // Update spotlight position
+    const rect = targetEl.getBoundingClientRect();
+    const padding = 8;
+    const spotlight = document.getElementById('tutorial-spotlight');
+    spotlight.style.top = (rect.top - padding + window.scrollY) + 'px';
+    spotlight.style.left = (rect.left - padding) + 'px';
+    spotlight.style.width = (rect.width + padding * 2) + 'px';
+    spotlight.style.height = (rect.height + padding * 2) + 'px';
+
+    // Update tooltip text
+    document.getElementById('tutorial-text').textContent = step.text;
+
+    // Update counter
+    document.getElementById('tutorial-counter').textContent = `${index + 1} / ${steps.length}`;
+
+    // Show/hide prev button
+    document.getElementById('tutorial-prev').style.visibility = index === 0 ? 'hidden' : 'visible';
+
+    // Change "Suivant" to "Terminer" on last step
+    const nextBtn = document.getElementById('tutorial-next');
+    nextBtn.textContent = index === steps.length - 1 ? 'Terminer' : 'Suivant';
+
+    // Position tooltip
+    this._positionTooltip(rect);
+
+    // Scroll element into view if needed
+    targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  },
+
+  _positionTooltip(targetRect) {
+    const tooltip = document.getElementById('tutorial-tooltip');
+    const arrow = document.getElementById('tutorial-arrow');
+    const padding = 8;
+    const gap = 16;
+
+    // Default: position below the spotlight
+    let top = targetRect.bottom + padding + gap + window.scrollY;
+    let left = targetRect.left;
+
+    // Check if tooltip would go below viewport
+    const tooltipHeight = 160; // approximate
+    if (targetRect.bottom + gap + tooltipHeight > window.innerHeight) {
+      // Position above
+      top = targetRect.top - padding - gap - tooltipHeight + window.scrollY;
+      arrow.className = 'tutorial-arrow tutorial-arrow-bottom';
+    } else {
+      arrow.className = 'tutorial-arrow tutorial-arrow-top';
+    }
+
+    // Keep within horizontal bounds
+    const maxLeft = window.innerWidth - 380;
+    left = Math.max(16, Math.min(left, maxLeft));
+
+    tooltip.style.top = top + 'px';
+    tooltip.style.left = left + 'px';
+  },
+
+  _closeTutorial() {
+    this._tutorialActive = false;
+    document.getElementById('tutorial-overlay').classList.add('hidden');
+    localStorage.setItem('pf_tutorial_seen', 'true');
+  },
+
   // ===== EVENT BINDING =====
 
   bindEvents() {
@@ -890,13 +1116,48 @@ const App = {
       }
     });
 
+    // Guide button
+    document.getElementById('btn-guide').addEventListener('click', () => this.startTutorial());
+
+    // Tutorial navigation
+    document.getElementById('tutorial-next').addEventListener('click', () => {
+      const steps = this._getTutorialSteps();
+      if (this._tutorialCurrentIndex < steps.length - 1) {
+        this._showTutorialStep(this._tutorialCurrentIndex + 1);
+      } else {
+        this._closeTutorial();
+      }
+    });
+    document.getElementById('tutorial-prev').addEventListener('click', () => {
+      if (this._tutorialCurrentIndex > 0) {
+        this._showTutorialStep(this._tutorialCurrentIndex - 1);
+      }
+    });
+
+    // Close tutorial on backdrop click
+    document.getElementById('tutorial-overlay').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget || e.target.classList.contains('tutorial-backdrop')) {
+        this._closeTutorial();
+      }
+    });
+
+    // Bind guide highlight listeners
+    this._bindGuideListeners();
+
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (this._tutorialActive) {
+          this._closeTutorial();
+        } else {
+          this.closeSettings();
+        }
+        return;
+      }
       if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') {
         e.preventDefault();
         this.nextStep();
       }
-      if (e.key === 'Escape') this.closeSettings();
     });
   }
 };
