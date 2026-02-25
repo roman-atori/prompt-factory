@@ -69,7 +69,7 @@ async function callOpenAI(apiKey, systemPrompt, userMessage) {
   const client = new OpenAI({ apiKey });
   const response = await client.chat.completions.create({
     model: 'gpt-5.2',
-    max_tokens: 4096,
+    max_completion_tokens: 4096,
     temperature: 0.3,
     messages: [
       { role: 'system', content: systemPrompt },
