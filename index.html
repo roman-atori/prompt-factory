@@ -510,24 +510,34 @@
           <div class="prompt-preview" id="prompt-preview"></div>
         </div>
 
-        <!-- Feedback zone -->
-        <div class="form-group" style="margin-top: var(--space-lg);">
-          <label for="preview-feedback">Pas satisfait ? Décrivez les modifications souhaitées :</label>
-          <textarea id="preview-feedback" rows="3" placeholder="Ex : 'Rendre le ton plus formel', 'Ajouter une section sur les erreurs possibles', 'Simplifier les instructions'..."></textarea>
-          <button class="btn-secondary btn-sm" id="btn-apply-feedback" style="margin-top: var(--space-sm);">Régénérer avec les modifications</button>
-        </div>
-
-        <!-- Action buttons -->
-        <div class="action-bar">
-          <button class="btn-secondary" id="btn-copy">Copier</button>
-          <div class="download-dropdown">
-            <button class="btn-secondary" id="btn-download">Télécharger</button>
-            <div class="download-menu hidden" id="download-menu">
-              <button class="download-option" data-format="md">.md (Markdown)</button>
-              <button class="download-option" data-format="txt">.txt (Texte brut)</button>
-              <button class="download-option" data-format="html">.html (Page web)</button>
+        <!-- Actions + Feedback -->
+        <div class="prompt-actions-bar">
+          <div class="prompt-actions-left">
+            <button class="btn-action btn-action-copy" id="btn-copy">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+              Copier
+            </button>
+            <div class="download-dropdown">
+              <button class="btn-action btn-action-download" id="btn-download">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Télécharger
+              </button>
+              <div class="download-menu hidden" id="download-menu">
+                <button class="download-option" data-format="md">.md (Markdown)</button>
+                <button class="download-option" data-format="txt">.txt (Texte brut)</button>
+                <button class="download-option" data-format="html">.html (Page web)</button>
+              </div>
             </div>
           </div>
+        </div>
+
+        <!-- Feedback zone -->
+        <div class="feedback-bar">
+          <textarea id="preview-feedback" rows="2" placeholder="Pas satisfait ? Décrivez les modifications souhaitées..."></textarea>
+          <button class="btn-action btn-action-regenerate" id="btn-apply-feedback">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+            Régénérer
+          </button>
         </div>
       </div>
     </section>
@@ -603,23 +613,33 @@
               <div class="optimize-notes-content" id="optimize-notes-content"></div>
             </div>
 
-            <!-- Feedback (dans le panneau droit) -->
-            <div class="comparison-feedback hidden" id="optimize-feedback-zone">
-              <label for="optimize-feedback">Pas satisfait ? Decrivez les modifications souhaitees :</label>
-              <textarea id="optimize-feedback" rows="2" placeholder="Ex : 'Rendre le prompt plus concis', 'Ajouter des exemples'..."></textarea>
-              <button class="btn-secondary btn-sm" id="btn-regenerate" style="margin-top: var(--space-sm);">Regenerer avec les modifications</button>
-            </div>
-
             <!-- Actions (dans le panneau droit) -->
             <div class="comparison-actions hidden" id="optimize-actions">
-              <button class="btn-secondary btn-sm" id="btn-copy-optimized">Copier</button>
+              <button class="btn-action btn-action-copy btn-sm" id="btn-copy-optimized">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copier
+              </button>
               <div class="download-dropdown">
-                <button class="btn-secondary btn-sm" id="btn-download-optimized">Telecharger</button>
+                <button class="btn-action btn-action-download btn-sm" id="btn-download-optimized">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Télécharger
+                </button>
                 <div class="download-menu hidden" id="download-menu-optimized">
                   <button class="download-option" data-format="md" data-target="optimized">.md (Markdown)</button>
                   <button class="download-option" data-format="txt" data-target="optimized">.txt (Texte brut)</button>
                   <button class="download-option" data-format="html" data-target="optimized">.html (Page web)</button>
                 </div>
+              </div>
+            </div>
+
+            <!-- Feedback (dans le panneau droit) -->
+            <div class="comparison-feedback hidden" id="optimize-feedback-zone">
+              <div class="feedback-bar feedback-bar-compact">
+                <textarea id="optimize-feedback" rows="2" placeholder="Pas satisfait ? Decrivez les modifications..."></textarea>
+                <button class="btn-action btn-action-regenerate btn-sm" id="btn-regenerate">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+                  Régénérer
+                </button>
               </div>
             </div>
           </div>

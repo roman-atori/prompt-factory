@@ -933,6 +933,87 @@ textarea {
   flex-wrap: wrap;
 }
 
+/* Prompt actions bar (Step 7 & 8) */
+.prompt-actions-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-md);
+  padding: var(--space-sm) 0;
+}
+
+.prompt-actions-left {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.btn-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: none;
+}
+
+.btn-action.btn-sm {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+
+.btn-action-copy {
+  background: var(--color-primary);
+  color: white;
+}
+
+.btn-action-copy:hover {
+  background: var(--color-primary-hover);
+}
+
+.btn-action-download {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+.btn-action-download:hover {
+  background: var(--color-bg);
+  border-color: var(--color-border-hover);
+}
+
+.btn-action-regenerate {
+  background: var(--color-success);
+  color: white;
+  flex-shrink: 0;
+}
+
+.btn-action-regenerate:hover {
+  background: #15803d;
+}
+
+/* Feedback bar */
+.feedback-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}
+
+.feedback-bar textarea {
+  flex: 1;
+  min-height: 40px;
+}
+
+.feedback-bar-compact {
+  margin-top: 0;
+}
+
 /* Download dropdown */
 .download-dropdown {
   position: relative;
