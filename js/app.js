@@ -13,9 +13,9 @@ const App = {
   activeLLMTabOptimize: null,
   editMode: false,
   previewMode: 'split', // 'split' or 'combined'
-  displayFormat: 'rendered', // 'rendered', 'markdown', 'plaintext'
+  displayFormat: 'plaintext', // 'plaintext', 'rendered', 'markdown'
   step8Modes: { original: 'split', optimized: 'split' },
-  step8Formats: { original: 'rendered', optimized: 'rendered' },
+  step8Formats: { original: 'plaintext', optimized: 'plaintext' },
   smartQuestionsGenerated: false,
   tutorialActive: false,
   tutorialStepIndex: 0,
@@ -107,9 +107,9 @@ const App = {
     document.querySelectorAll('.wizard-step').forEach(s => s.classList.remove('active'));
     const target = document.getElementById('step-' + stepNumber);
     if (target) target.classList.add('active');
-    // Wide mode for steps with large panels (7, 8)
+    // Wide mode for steps needing extra width (1, 7, 8)
     const container = document.getElementById('wizard-container');
-    if (container) container.classList.toggle('wide-mode', stepNumber >= 7);
+    if (container) container.classList.toggle('wide-mode', stepNumber === 1 || stepNumber >= 7);
     this.updateStepIndicators();
     this.updateNavigation();
     this._updateGuideHighlights();
@@ -602,9 +602,9 @@ const App = {
     this.displayFormat = format;
 
     // Update button label
-    const labels = { rendered: 'Rendu', markdown: 'Source', plaintext: 'Texte' };
+    const labels = { plaintext: 'Texte', rendered: 'HTML', markdown: 'Source' };
     const btn = document.getElementById('btn-format');
-    if (btn) btn.textContent = (labels[format] || 'Rendu') + ' \u25BE';
+    if (btn) btn.textContent = (labels[format] || 'Texte') + ' \u25BE';
 
     // Update active state in menu
     document.querySelectorAll('#format-menu .format-option').forEach(opt => {
@@ -623,31 +623,43 @@ const App = {
     switch (format) {
       case 'markdown':
         container.innerHTML = `<pre class="format-source"><code>${UIHelpers.escapeHtml(markdown)}</code></pre>`;
-        break;
-      case 'plaintext':
-        container.innerHTML = '';
-        container.style.whiteSpace = 'pre-wrap';
-        container.textContent = this._stripMarkdown(markdown);
+        container.style.whiteSpace = '';
         break;
       case 'rendered':
-      default:
         container.style.whiteSpace = '';
         container.innerHTML = UIHelpers.renderMarkdown(markdown);
+        break;
+      case 'plaintext':
+      default:
+        container.style.whiteSpace = 'pre-wrap';
+        container.textContent = this._stripMarkdown(markdown);
         break;
     }
   },
 
   _stripMarkdown(text) {
     return text
-      .replace(/^#{1,6}\s+/gm, '')
+      // Headings → UPPERCASE labels
+      .replace(/^#{1,2}\s+(.*)/gm, (_, t) => t.toUpperCase())
+      .replace(/^#{3,6}\s+(.*)/gm, '$1')
+      // Bold/italic → plain
       .replace(/\*\*(.*?)\*\*/g, '$1')
       .replace(/\*(.*?)\*/g, '$1')
+      // Code blocks → content only
       .replace(/`{3}[\s\S]*?`{3}/g, (m) => m.replace(/`{3}.*?\n?/g, '').trim())
       .replace(/`(.*?)`/g, '$1')
+      // Blockquotes → plain
       .replace(/^>\s+/gm, '')
+      // Lists → clean bullets
       .replace(/^[-*+]\s+/gm, '- ')
+      // Links → text only
       .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+      // Horizontal rules → blank line
       .replace(/^---+$/gm, '')
+      // XML/HTML tags → removed
+      .replace(/<\/?[^>]+>/g, '')
+      // Collapse multiple blank lines
+      .replace(/\n{3,}/g, '\n\n')
       .trim();
   },
 
@@ -761,7 +773,15 @@ const App = {
       content = this.generatedPrompts[llmKey];
     }
 
-    if (!content) return;
+    if (!content) {
+      if (panel === 'optimized') {
+        // Show placeholder when no optimized content yet
+        preview.innerHTML = '<div class="comparison-placeholder"><p>Cliquez sur « Lancer l\'optimisation » pour voir le resultat ici.</p></div>';
+        preview.classList.remove('hidden');
+        editor.classList.add('hidden');
+      }
+      return;
+    }
 
     if (panel === 'optimized' && content._optimizedMarkdown) {
       const md = content._optimizedMarkdown;
@@ -806,9 +826,9 @@ const App = {
     this.step8Formats[panel] = format;
 
     // Update button label
-    const labels = { rendered: 'Rendu', markdown: 'Source', plaintext: 'Texte' };
+    const labels = { plaintext: 'Texte', rendered: 'HTML', markdown: 'Source' };
     const btn = document.querySelector(`.format-btn[data-panel="${panel}"]`);
-    if (btn) btn.textContent = (labels[format] || 'Rendu') + ' \u25BE';
+    if (btn) btn.textContent = (labels[format] || 'Texte') + ' \u25BE';
 
     // Update active state in format menu
     document.querySelectorAll(`.format-menu[data-panel="${panel}"] .format-option`).forEach(opt => {

@@ -65,17 +65,24 @@
         <h2>Quel(s) modèles ciblez-vous ?</h2>
         <p class="step-description">Sélectionnez un ou plusieurs modèles. Le prompt sera optimisé pour chacun.</p>
 
-        <h3 class="grid-label">LLM (texte)</h3>
-        <div class="llm-grid" id="llm-grid"></div>
-
-        <h3 class="grid-label">Modèles image</h3>
-        <div class="llm-grid" id="image-grid"></div>
-
-        <h3 class="grid-label">Modèles vidéo</h3>
-        <div class="llm-grid" id="video-grid"></div>
-
-        <h3 class="grid-label">Vibe Coding</h3>
-        <div class="llm-grid" id="vibe-grid"></div>
+        <div class="models-columns">
+          <div class="models-column">
+            <h3 class="grid-label">LLM (texte)</h3>
+            <div class="llm-grid llm-grid-vertical" id="llm-grid"></div>
+          </div>
+          <div class="models-column">
+            <h3 class="grid-label">Modèles image</h3>
+            <div class="llm-grid llm-grid-vertical" id="image-grid"></div>
+          </div>
+          <div class="models-column">
+            <h3 class="grid-label">Modèles vidéo</h3>
+            <div class="llm-grid llm-grid-vertical" id="video-grid"></div>
+          </div>
+          <div class="models-column">
+            <h3 class="grid-label">Vibe Coding</h3>
+            <div class="llm-grid llm-grid-vertical" id="vibe-grid"></div>
+          </div>
+        </div>
 
         <p class="validation-error hidden" id="error-step1">Veuillez sélectionner au moins un modèle.</p>
       </div>
@@ -410,15 +417,15 @@
         </div>
 
         <!-- Chain-of-thought toggle -->
-        <div class="toggle-section">
+        <div class="toggle-section" id="cot-section">
           <div class="toggle-header">
             <label class="toggle-switch">
               <input type="checkbox" id="cot-toggle">
               <span class="toggle-slider"></span>
             </label>
             <div class="toggle-label">
-              <span>Raisonnement étape par étape (Chain-of-Thought)</span>
-              <span class="helper-text">Demande au LLM de « réfléchir à voix haute » avant de répondre. Améliore significativement la qualité pour les tâches complexes : mathématiques, code, analyse logique, résolution de problèmes.</span>
+              <span>Activer le raisonnement étape par étape (Chain-of-Thought)</span>
+              <span class="helper-text">Concrètement : le LLM décomposera sa réflexion en étapes visibles avant de donner sa réponse finale. Par exemple, pour un calcul complexe, il montrera chaque étape du raisonnement. Cela améliore la qualité pour les tâches de logique, maths, code et analyse.</span>
             </div>
             <span class="badge badge-green hidden" id="cot-recommendation">Recommandé</span>
           </div>
@@ -426,11 +433,12 @@
 
         <!-- Output length -->
         <div class="form-group">
-          <label>Longueur de sortie préférée</label>
+          <label>Quelle longueur de réponse attendez-vous du LLM ?</label>
+          <p class="helper-text" style="margin-bottom: var(--space-sm); margin-top: 0;">Contrôle la taille de la réponse générée : "Court" = quelques phrases, "Moyen" = quelques paragraphes, "Long" = réponse détaillée, "Illimité" = aucune limite.</p>
           <div class="radio-pills" id="length-group">
-            <label class="pill"><input type="radio" name="output-length" value="court"><span>Court</span></label>
-            <label class="pill"><input type="radio" name="output-length" value="moyen" checked><span>Moyen</span></label>
-            <label class="pill"><input type="radio" name="output-length" value="long"><span>Long</span></label>
+            <label class="pill"><input type="radio" name="output-length" value="court"><span>Court (1-3 phrases)</span></label>
+            <label class="pill"><input type="radio" name="output-length" value="moyen" checked><span>Moyen (2-4 paragraphes)</span></label>
+            <label class="pill"><input type="radio" name="output-length" value="long"><span>Long (détaillé)</span></label>
             <label class="pill"><input type="radio" name="output-length" value="illimite"><span>Illimité</span></label>
           </div>
         </div>
@@ -487,11 +495,11 @@
               <button class="toolbar-tab" id="btn-edit-mode">Éditer</button>
               <span class="toolbar-separator">|</span>
               <div class="format-select">
-                <button class="toolbar-tab" id="btn-format">Rendu &#9662;</button>
+                <button class="toolbar-tab" id="btn-format">Texte &#9662;</button>
                 <div class="format-menu hidden" id="format-menu">
-                  <button class="format-option active" data-format="rendered">Rendu (HTML)</button>
+                  <button class="format-option active" data-format="plaintext">Texte lisible</button>
+                  <button class="format-option" data-format="rendered">Rendu HTML</button>
                   <button class="format-option" data-format="markdown">Markdown source</button>
-                  <button class="format-option" data-format="plaintext">Texte brut</button>
                 </div>
               </div>
             </div>
@@ -545,11 +553,11 @@
                 <button class="toolbar-tab" data-panel="original" data-mode="edit">Editer</button>
                 <span class="toolbar-separator">|</span>
                 <div class="format-select">
-                  <button class="toolbar-tab format-btn" data-panel="original">Rendu &#9662;</button>
+                  <button class="toolbar-tab format-btn" data-panel="original">Texte &#9662;</button>
                   <div class="format-menu hidden" data-panel="original">
-                    <button class="format-option active" data-format="rendered" data-panel="original">Rendu (HTML)</button>
+                    <button class="format-option active" data-format="plaintext" data-panel="original">Texte lisible</button>
+                    <button class="format-option" data-format="rendered" data-panel="original">Rendu HTML</button>
                     <button class="format-option" data-format="markdown" data-panel="original">Markdown source</button>
-                    <button class="format-option" data-format="plaintext" data-panel="original">Texte brut</button>
                   </div>
                 </div>
               </div>
@@ -572,11 +580,11 @@
                 <button class="toolbar-tab" data-panel="optimized" data-mode="edit">Editer</button>
                 <span class="toolbar-separator">|</span>
                 <div class="format-select">
-                  <button class="toolbar-tab format-btn" data-panel="optimized">Rendu &#9662;</button>
+                  <button class="toolbar-tab format-btn" data-panel="optimized">Texte &#9662;</button>
                   <div class="format-menu hidden" data-panel="optimized">
-                    <button class="format-option active" data-format="rendered" data-panel="optimized">Rendu (HTML)</button>
+                    <button class="format-option active" data-format="plaintext" data-panel="optimized">Texte lisible</button>
+                    <button class="format-option" data-format="rendered" data-panel="optimized">Rendu HTML</button>
                     <button class="format-option" data-format="markdown" data-panel="optimized">Markdown source</button>
-                    <button class="format-option" data-format="plaintext" data-panel="optimized">Texte brut</button>
                   </div>
                 </div>
               </div>
