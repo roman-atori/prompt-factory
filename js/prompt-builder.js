@@ -38,11 +38,12 @@ const PromptBuilder = {
       targetLLMs.push(card.dataset.llm);
     });
 
-    // Step 2: Task type + Persona
+    // Step 2: Task type + Persona + Free description
     const selectedTask = document.querySelector('.task-card.selected');
     const taskType = selectedTask ? selectedTask.dataset.task : '';
     const customTaskType = document.getElementById('custom-task-input').value.trim();
     const persona = document.getElementById('persona').value.trim();
+    const freeDescription = document.getElementById('free-description').value.trim();
 
     // Step 3: Context (multi-select fields)
     const domain = this._getFieldValue('domain', null, '');
@@ -90,7 +91,7 @@ const PromptBuilder = {
       domain, audience, outputLanguage, tone,
       taskDescription, inputDescription, outputFormat, constraints,
       imageData, videoData, complexity,
-      persona, fewShotEnabled, fewShotExamples, chainOfThought, outputLength,
+      persona, freeDescription, fewShotEnabled, fewShotExamples, chainOfThought, outputLength,
       smartAnswers
     };
   },
@@ -156,24 +157,27 @@ const PromptBuilder = {
   },
 
   isMediaTask(targetLLMs) {
-    const mediaModels = ['flux', 'stable-diffusion', 'nano-banana', 'veo'];
+    const mediaModels = ['flux', 'stable-diffusion', 'nano-banana', 'dall-e', 'midjourney', 'ideogram', 'veo', 'runway', 'sora', 'kling'];
     return targetLLMs.some(m => mediaModels.includes(m));
   },
 
   hasImageModel(targetLLMs) {
-    return targetLLMs.some(m => m === 'flux' || m === 'stable-diffusion' || m === 'nano-banana');
+    const imageModels = ['flux', 'stable-diffusion', 'nano-banana', 'dall-e', 'midjourney', 'ideogram'];
+    return targetLLMs.some(m => imageModels.includes(m));
   },
 
   hasVideoModel(targetLLMs) {
-    return targetLLMs.some(m => m === 'veo');
+    const videoModels = ['veo', 'runway', 'sora', 'kling'];
+    return targetLLMs.some(m => videoModels.includes(m));
   },
 
   hasVibeModel(targetLLMs) {
-    return targetLLMs.some(m => m === 'claude-code');
+    const vibeModels = ['claude-code', 'cursor', 'windsurf', 'copilot'];
+    return targetLLMs.some(m => vibeModels.includes(m));
   },
 
   hasTextModel(targetLLMs) {
-    const textModels = ['claude', 'chatgpt', 'gemini', 'perplexity'];
+    const textModels = ['claude', 'chatgpt', 'gemini', 'perplexity', 'notebooklm', 'mistral', 'deepseek', 'grok'];
     return targetLLMs.some(m => textModels.includes(m));
   },
 
@@ -193,6 +197,9 @@ const PromptBuilder = {
       'agent': 'agent IA autonome et methodique',
       'brainstorming': 'consultant creatif',
       'claude-code': 'expert Claude Code et prompt engineering pour agents IA',
+      'cursor': 'developpeur expert utilisant Cursor AI',
+      'windsurf': 'developpeur expert utilisant Windsurf/Codeium',
+      'copilot': 'developpeur assistant via GitHub Copilot',
       'n8n': 'expert n8n et automatisation de workflows IA',
       'ia-llm': 'expert en IA, LLMs et prompt engineering',
       'image-gen': 'artiste digital',

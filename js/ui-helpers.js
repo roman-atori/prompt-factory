@@ -20,7 +20,9 @@ const UIHelpers = {
         return code;
       }
     });
-    return marked.parse(markdown);
+    const html = marked.parse(markdown);
+    if (typeof DOMPurify !== 'undefined') return DOMPurify.sanitize(html);
+    return html;
   },
 
   /**
@@ -130,6 +132,12 @@ ${htmlBody}
    */
   estimateTokens(text) {
     if (!text) return 0;
-    return Math.ceil(text.length / 4);
+    // ~3.5 chars per token for French, ~4 for English. Use 3.7 as balanced estimate.
+    const charEstimate = Math.ceil(text.length / 3.7);
+    // Also count words (avg ~1.3 tokens per word for French)
+    const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
+    const wordEstimate = Math.ceil(wordCount * 1.3);
+    // Return average of both methods
+    return Math.ceil((charEstimate + wordEstimate) / 2);
   }
 };

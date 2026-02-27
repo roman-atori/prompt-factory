@@ -42,6 +42,24 @@ const LLMAdapters = {
       icon: 'img/logos/notebooklm.png',
       description: 'Google - Sources-first, synthese, podcast',
       category: 'text'
+    },
+    mistral: {
+      name: 'Mistral',
+      icon: 'img/logos/mistral.png',
+      description: 'Mistral AI - Structured output, multilingual',
+      category: 'text'
+    },
+    deepseek: {
+      name: 'DeepSeek',
+      icon: 'img/logos/deepseek.png',
+      description: 'DeepSeek - Raisonnement profond, code, maths',
+      category: 'text'
+    },
+    grok: {
+      name: 'Grok',
+      icon: 'img/logos/grok.png',
+      description: 'xAI - Infos temps reel, style direct',
+      category: 'text'
     }
   },
 
@@ -64,6 +82,24 @@ const LLMAdapters = {
       icon: 'img/logos/nano-banana.png',
       description: 'Google - Text rendering, thinking, search grounding',
       category: 'image'
+    },
+    'dall-e': {
+      name: 'DALL-E 3',
+      icon: 'img/logos/dall-e.png',
+      description: 'OpenAI - Langage naturel, pas de poids/negatif',
+      category: 'image'
+    },
+    midjourney: {
+      name: 'Midjourney',
+      icon: 'img/logos/midjourney.png',
+      description: 'Style artistique, parametres --ar --v --s',
+      category: 'image'
+    },
+    ideogram: {
+      name: 'Ideogram',
+      icon: 'img/logos/ideogram.png',
+      description: 'Meilleur rendu texte, typographie, logos',
+      category: 'image'
     }
   },
 
@@ -72,7 +108,25 @@ const LLMAdapters = {
     veo: {
       name: 'Veo (Google)',
       icon: 'img/logos/veo.png',
-      description: 'Vidéo - Camera movement, cinématique, tempo',
+      description: 'Video - Camera movement, cinematique, tempo',
+      category: 'video'
+    },
+    runway: {
+      name: 'Runway Gen-3',
+      icon: 'img/logos/runway.png',
+      description: 'Video - Motion brush, camera controls',
+      category: 'video'
+    },
+    sora: {
+      name: 'Sora',
+      icon: 'img/logos/sora.png',
+      description: 'OpenAI - Cinematique, descriptions naturelles',
+      category: 'video'
+    },
+    kling: {
+      name: 'Kling',
+      icon: 'img/logos/kling.png',
+      description: 'Kuaishou - Motion fluide, haute fidelite',
       category: 'video'
     }
   },
@@ -83,6 +137,24 @@ const LLMAdapters = {
       name: 'Claude Code',
       icon: 'img/logos/claude-code.png',
       description: 'Vibe Coding - Prompts pour agent IA en CLI',
+      category: 'vibe'
+    },
+    cursor: {
+      name: 'Cursor',
+      icon: 'img/logos/cursor.png',
+      description: 'AI-first editor - .cursorrules, @-mentions',
+      category: 'vibe'
+    },
+    windsurf: {
+      name: 'Windsurf',
+      icon: 'img/logos/windsurf.png',
+      description: 'Codeium - Cascade flows, .windsurfrules',
+      category: 'vibe'
+    },
+    copilot: {
+      name: 'GitHub Copilot',
+      icon: 'img/logos/copilot.png',
+      description: 'GitHub - Inline completions, chat, /commands',
       category: 'vibe'
     }
   },
@@ -97,11 +169,23 @@ const LLMAdapters = {
       case 'gemini': return this.formatForGemini(promptData);
       case 'perplexity': return this.formatForPerplexity(promptData);
       case 'notebooklm': return this.formatForNotebookLM(promptData);
+      case 'mistral': return this.formatForMistral(promptData);
+      case 'deepseek': return this.formatForDeepSeek(promptData);
+      case 'grok': return this.formatForGrok(promptData);
       case 'flux': return this.formatForFLUX(promptData);
       case 'stable-diffusion': return this.formatForStableDiffusion(promptData);
       case 'nano-banana': return this.formatForNanoBanana(promptData);
+      case 'dall-e': return this.formatForDallE(promptData);
+      case 'midjourney': return this.formatForMidjourney(promptData);
+      case 'ideogram': return this.formatForIdeogram(promptData);
       case 'veo': return this.formatForVeo(promptData);
+      case 'runway': return this.formatForRunway(promptData);
+      case 'sora': return this.formatForSora(promptData);
+      case 'kling': return this.formatForKling(promptData);
       case 'claude-code': return this.formatForClaudeCode(promptData);
+      case 'cursor': return this.formatForCursor(promptData);
+      case 'windsurf': return this.formatForWindsurf(promptData);
+      case 'copilot': return this.formatForCopilot(promptData);
       default: return this.formatGeneric(promptData);
     }
   },
@@ -334,61 +418,209 @@ const LLMAdapters = {
       });
     }
 
-    const warnings = [];
+    // Transform few-shot examples into contextual descriptions (not raw examples)
     if (data.examples && data.examples.length > 0) {
-      warnings.push('Les exemples few-shot ont ete retires : ils polluent les sous-recherches de Perplexity.');
+      userPrompt += '\n\nPour reference, voici le type de resultat attendu :\n';
+      data.examples.forEach((ex, i) => {
+        userPrompt += `- Pour "${ex.input}", le resultat ideal serait : "${ex.output}"\n`;
+      });
     }
 
     const notes = [
       'Conseil : Les parametres API sont plus efficaces que les instructions texte.',
       'Parametres recommandes : search_domain_filter, search_context_size: "large".',
       'Ne demandez JAMAIS d\'inclure des URLs dans la reponse textuelle.',
-      ...warnings
+      'Les exemples few-shot ont ete transformes en descriptions contextuelles pour Perplexity.'
     ];
 
     return { systemPrompt, userPrompt, notes };
   },
 
   formatForNotebookLM(data) {
+    // NotebookLM n'a pas de system prompt configurable.
+    // On genere une "Note de guidage" a coller dans l'interface.
+    let systemPrompt = 'Note de guidage pour NotebookLM (a coller comme Note)';
+
+    let userPrompt = '';
+    userPrompt += `OBJECTIF : ${data.task}\n\n`;
+
+    if (data.raw.domain) userPrompt += `DOMAINE : ${data.raw.domain}\n`;
+    if (data.raw.audience) userPrompt += `PUBLIC CIBLE : ${this._audienceLabel(data.raw.audience)}\n`;
+    if (data.raw.outputLanguage) userPrompt += `LANGUE : ${data.raw.outputLanguage}\n`;
+    if (data.raw.tone) userPrompt += `TON : ${data.raw.tone}\n`;
+    userPrompt += `FORMAT : ${data.format}\n\n`;
+
+    userPrompt += 'CONSIGNES :\n';
+    userPrompt += '- Base tes reponses UNIQUEMENT sur les sources uploadees\n';
+    userPrompt += '- Cite les passages pertinents des sources\n';
+    userPrompt += '- Synthetise les informations de maniere structuree\n';
+    if (data.raw.constraints) {
+      data.raw.constraints.split('\n').forEach(c => { userPrompt += `- ${c}\n`; });
+    }
+
+    if (data.raw.inputDescription) {
+      userPrompt += `\nSOURCES A UPLOADER :\n${data.raw.inputDescription}\n`;
+    }
+
+    if (data.raw.smartAnswers && data.raw.smartAnswers.length > 0) {
+      userPrompt += '\nPRECISIONS :\n';
+      data.raw.smartAnswers.forEach(qa => { userPrompt += `- ${qa.answer}\n`; });
+    }
+
+    if (data.examples && data.examples.length > 0) {
+      userPrompt += '\nEXEMPLES ATTENDUS :\n';
+      data.examples.forEach((ex, i) => {
+        userPrompt += `Exemple ${i + 1} : ${ex.input} -> ${ex.output}\n`;
+      });
+    }
+
+    const notes = [
+      'Collez ce texte comme "Note" dans NotebookLM (pas dans le chat).',
+      'Uploadez d\'abord vos sources (PDF, sites web, textes) dans le notebook.',
+      'NotebookLM repondra en se basant uniquement sur vos sources.',
+      'Pour un Audio Overview (podcast), ajoutez des instructions de personnalisation dans les parametres audio.'
+    ];
+
+    return { systemPrompt, userPrompt, notes };
+  },
+
+  formatForMistral(data) {
     let systemPrompt = data.persona + '\n\n';
-    systemPrompt += 'Tu travailles dans Google NotebookLM. Principes :\n';
-    systemPrompt += '- Base tes reponses UNIQUEMENT sur les sources fournies\n';
-    systemPrompt += '- Cite les passages pertinents des sources\n';
-    systemPrompt += '- Synthetise les informations de maniere structuree\n';
-    if (data.raw.outputLanguage) systemPrompt += `- Langue de reponse : ${data.raw.outputLanguage}\n`;
+    systemPrompt += 'Instructions :\n';
     if (data.raw.tone) systemPrompt += `- Ton : ${data.raw.tone}\n`;
     if (data.raw.audience) systemPrompt += `- Public : ${this._audienceLabel(data.raw.audience)}\n`;
-    systemPrompt += `- Format de sortie : ${data.format}\n`;
+    if (data.raw.outputLanguage) systemPrompt += `- Langue : ${data.raw.outputLanguage}\n`;
+    systemPrompt += `- Format : ${data.format}\n`;
     if (data.raw.constraints) {
       systemPrompt += data.raw.constraints.split('\n').map(c => `- ${c}`).join('\n') + '\n';
     }
 
     let userPrompt = '';
-    if (data.raw.domain) userPrompt += `[Domaine : ${data.raw.domain}] `;
-    userPrompt += data.task;
+    if (data.raw.domain) userPrompt += `[${data.raw.domain}] `;
+
+    if (data.examples && data.examples.length > 0) {
+      userPrompt += 'Exemples :\n';
+      data.examples.forEach((ex, i) => {
+        userPrompt += `${i + 1}. Input : ${ex.input}\n   Output : ${ex.output}\n`;
+      });
+      userPrompt += '\n';
+    }
+
     if (data.raw.inputDescription) {
-      userPrompt += `\n\nSources a analyser : ${data.raw.inputDescription}`;
+      userPrompt += `Donnees d'entree : ${data.raw.inputDescription}\n\n`;
     }
 
     if (data.raw.smartAnswers && data.raw.smartAnswers.length > 0) {
-      userPrompt += '\n\nPrecisions :\n';
-      data.raw.smartAnswers.forEach(qa => {
-        userPrompt += `- ${qa.answer}\n`;
-      });
+      userPrompt += 'Contexte :\n';
+      data.raw.smartAnswers.forEach(qa => { userPrompt += `- ${qa.question} : ${qa.answer}\n`; });
+      userPrompt += '\n';
     }
 
+    if (data.chainOfThought) userPrompt += 'Reflechis etape par etape.\n\n';
+    userPrompt += data.task;
+
+    const notes = [
+      'Mistral supporte nativement le JSON mode via response_format.',
+      'Conseil : temperature 0 pour extraction/classification, 0.7 pour creativite.',
+      'Mistral excelle sur les taches multilingues et le structured output.',
+      'Le function calling de Mistral est compatible OpenAI SDK.'
+    ];
+
+    return { systemPrompt, userPrompt, notes };
+  },
+
+  formatForDeepSeek(data) {
+    let systemPrompt = data.persona;
+
+    if (data.raw.complexity === 'advanced' || data.raw.complexity === 'expert') {
+      systemPrompt += '\n\nPrincipes :\n';
+      systemPrompt += '- Decompose les problemes complexes en sous-etapes\n';
+      systemPrompt += '- Montre ton raisonnement avant la reponse finale\n';
+      systemPrompt += '- Indique ton niveau de confiance\n';
+    }
+
+    let userPrompt = '';
+
+    if (data.raw.domain) userPrompt += `Domaine : ${data.raw.domain}\n`;
+    if (data.raw.audience) userPrompt += `Public : ${this._audienceLabel(data.raw.audience)}\n`;
+    if (data.raw.outputLanguage) userPrompt += `Langue : ${data.raw.outputLanguage}\n`;
+    if (data.raw.tone) userPrompt += `Ton : ${data.raw.tone}\n`;
+    if (userPrompt) userPrompt += '\n';
+
     if (data.examples && data.examples.length > 0) {
-      userPrompt += '\n\nExemples attendus :\n';
+      userPrompt += 'Exemples :\n';
       data.examples.forEach((ex, i) => {
         userPrompt += `Exemple ${i + 1} :\nEntree : ${ex.input}\nSortie : ${ex.output}\n\n`;
       });
     }
 
+    if (data.raw.inputDescription) {
+      userPrompt += `Donnees d'entree : ${data.raw.inputDescription}\n\n`;
+    }
+
+    if (data.raw.smartAnswers && data.raw.smartAnswers.length > 0) {
+      userPrompt += 'Details supplementaires :\n';
+      data.raw.smartAnswers.forEach(qa => { userPrompt += `- ${qa.question} : ${qa.answer}\n`; });
+      userPrompt += '\n';
+    }
+
+    if (data.chainOfThought) {
+      userPrompt += 'Reflechis en profondeur etape par etape dans des balises <think> avant ta reponse finale.\n\n';
+    }
+
+    userPrompt += data.task + '\n\n';
+    if (data.raw.constraints) userPrompt += `Contraintes : ${data.raw.constraints}\n\n`;
+    userPrompt += `Format attendu : ${data.format}`;
+
     const notes = [
-      'NotebookLM fonctionne exclusivement a partir de sources uploadees.',
-      'Uploadez vos documents (PDF, sites web, textes) comme sources avant d\'utiliser ce prompt.',
-      'Le prompt sera utilise comme "Note" dans l\'interface NotebookLM.',
-      'Pour generer un podcast Audio Overview, ajoutez des instructions de personnalisation.'
+      'DeepSeek R1 excelle en raisonnement mathematique et en code.',
+      'Activez le mode "Deep Think" pour les taches de logique complexe.',
+      'Les balises <think> permettent de voir le raisonnement interne du modele.',
+      'Conseil : temperature 0 pour le code, 0.6 pour la redaction.'
+    ];
+
+    return { systemPrompt, userPrompt, notes };
+  },
+
+  formatForGrok(data) {
+    let systemPrompt = data.persona + '\n\n';
+    systemPrompt += 'Style de reponse :\n';
+    if (data.raw.tone) systemPrompt += `- Ton : ${data.raw.tone}\n`;
+    if (data.raw.audience) systemPrompt += `- Public : ${this._audienceLabel(data.raw.audience)}\n`;
+    if (data.raw.outputLanguage) systemPrompt += `- Langue : ${data.raw.outputLanguage}\n`;
+    systemPrompt += `- Format : ${data.format}\n`;
+    if (data.raw.constraints) {
+      systemPrompt += data.raw.constraints.split('\n').map(c => `- ${c}`).join('\n') + '\n';
+    }
+
+    let userPrompt = '';
+    if (data.raw.domain) userPrompt += `Contexte : ${data.raw.domain}\n\n`;
+
+    if (data.examples && data.examples.length > 0) {
+      userPrompt += 'Exemples de reference :\n';
+      data.examples.forEach((ex, i) => {
+        userPrompt += `${i + 1}. "${ex.input}" -> "${ex.output}"\n`;
+      });
+      userPrompt += '\n';
+    }
+
+    if (data.raw.inputDescription) {
+      userPrompt += `Input : ${data.raw.inputDescription}\n\n`;
+    }
+
+    if (data.raw.smartAnswers && data.raw.smartAnswers.length > 0) {
+      data.raw.smartAnswers.forEach(qa => { userPrompt += `${qa.question} : ${qa.answer}\n`; });
+      userPrompt += '\n';
+    }
+
+    if (data.chainOfThought) userPrompt += 'Raisonne etape par etape.\n\n';
+    userPrompt += data.task;
+
+    const notes = [
+      'Grok a acces aux informations en temps reel via X/Twitter.',
+      'Le style par defaut est direct et concis - parfait pour les reponses factuelles.',
+      'Conseil : Grok excelle pour les sujets d\'actualite et les tendances.',
+      'Supporte le mode "Fun" pour un ton plus decontracte.'
     ];
 
     return { systemPrompt, userPrompt, notes };
@@ -458,6 +690,129 @@ const LLMAdapters = {
       'Claude Code lit le code source avant modification - fournissez les chemins de fichiers.',
       'Pour les taches complexes, utilisez /plan pour generer un plan avant execution.',
       'Les sub-agents (Task tool) parallelisent les recherches de code.'
+    ];
+
+    return { systemPrompt, userPrompt, notes };
+  },
+
+  formatForCursor(data) {
+    let systemPrompt = data.persona;
+    systemPrompt += '\n\nTu travailles dans Cursor (AI-first code editor). Principes :';
+    systemPrompt += '\n- Utilise @file et @folder pour referencer le contexte';
+    systemPrompt += '\n- Fais des modifications ciblees et minimales';
+    systemPrompt += '\n- Explique les changements avant de les appliquer';
+    if (data.raw.complexity === 'advanced' || data.raw.complexity === 'expert') {
+      systemPrompt += '\n- Utilise Composer pour les modifications multi-fichiers';
+      systemPrompt += '\n- Verifie les imports et les dependances apres modification';
+    }
+
+    let userPrompt = '';
+    if (data.raw.domain) userPrompt += `Projet : ${data.raw.domain}\n`;
+    if (data.raw.audience) userPrompt += `Utilisateurs : ${this._audienceLabel(data.raw.audience)}\n`;
+    if (data.raw.outputLanguage) userPrompt += `Langue : ${data.raw.outputLanguage}\n\n`;
+
+    if (data.raw.inputDescription) userPrompt += `## Contexte\n${data.raw.inputDescription}\n\n`;
+
+    if (data.examples && data.examples.length > 0) {
+      userPrompt += '## Exemples\n';
+      data.examples.forEach((ex, i) => { userPrompt += `${i + 1}. ${ex.input} -> ${ex.output}\n`; });
+      userPrompt += '\n';
+    }
+
+    if (data.raw.smartAnswers && data.raw.smartAnswers.length > 0) {
+      userPrompt += '## Details\n';
+      data.raw.smartAnswers.forEach(qa => { userPrompt += `- ${qa.question} : ${qa.answer}\n`; });
+      userPrompt += '\n';
+    }
+
+    if (data.chainOfThought) userPrompt += 'Reflechis etape par etape. Planifie avant de coder.\n\n';
+    userPrompt += `## Tache\n${data.task}\n\n`;
+    if (data.raw.constraints) userPrompt += `## Contraintes\n${data.raw.constraints}\n\n`;
+    userPrompt += `## Format\n${data.format}`;
+
+    const notes = [
+      'Utilisez ce prompt dans le chat Cursor (Cmd+L) ou Composer (Cmd+I).',
+      'Referencez les fichiers avec @file pour donner du contexte.',
+      'Ajoutez des .cursorrules a la racine du projet pour des instructions persistantes.',
+      'Composer est ideal pour les modifications multi-fichiers coordonnees.'
+    ];
+
+    return { systemPrompt, userPrompt, notes };
+  },
+
+  formatForWindsurf(data) {
+    let systemPrompt = data.persona;
+    systemPrompt += '\n\nTu travailles dans Windsurf (Codeium). Principes :';
+    systemPrompt += '\n- Utilise les Cascade flows pour les taches multi-etapes';
+    systemPrompt += '\n- Respecte l\'architecture existante du projet';
+    systemPrompt += '\n- Valide les changements etape par etape';
+
+    let userPrompt = '';
+    if (data.raw.domain) userPrompt += `Projet : ${data.raw.domain}\n`;
+    if (data.raw.outputLanguage) userPrompt += `Langue : ${data.raw.outputLanguage}\n\n`;
+
+    if (data.raw.inputDescription) userPrompt += `Contexte : ${data.raw.inputDescription}\n\n`;
+
+    if (data.examples && data.examples.length > 0) {
+      userPrompt += 'Exemples :\n';
+      data.examples.forEach((ex, i) => { userPrompt += `${i + 1}. ${ex.input} -> ${ex.output}\n`; });
+      userPrompt += '\n';
+    }
+
+    if (data.raw.smartAnswers && data.raw.smartAnswers.length > 0) {
+      data.raw.smartAnswers.forEach(qa => { userPrompt += `${qa.question} : ${qa.answer}\n`; });
+      userPrompt += '\n';
+    }
+
+    if (data.chainOfThought) userPrompt += 'Planifie les etapes avant d\'executer.\n\n';
+    userPrompt += data.task;
+    if (data.raw.constraints) userPrompt += `\n\nContraintes : ${data.raw.constraints}`;
+    userPrompt += `\n\nFormat : ${data.format}`;
+
+    const notes = [
+      'Windsurf Cascade gere automatiquement le contexte multi-fichiers.',
+      'Ajoutez un fichier .windsurfrules pour des instructions persistantes.',
+      'Les flows Cascade sont ideaux pour les refactorings et migrations.',
+      'Conseil : Soyez specifique sur les fichiers a modifier pour guider le flow.'
+    ];
+
+    return { systemPrompt, userPrompt, notes };
+  },
+
+  formatForCopilot(data) {
+    let systemPrompt = data.persona;
+    systemPrompt += '\n\nEnvironnement : GitHub Copilot (VS Code / IDE).';
+    if (data.raw.outputLanguage) systemPrompt += `\nLangue : ${data.raw.outputLanguage}`;
+    if (data.raw.tone) systemPrompt += `\nTon : ${data.raw.tone}`;
+    systemPrompt += `\nFormat : ${data.format}`;
+    if (data.raw.constraints) systemPrompt += `\nContraintes : ${data.raw.constraints}`;
+
+    let userPrompt = '';
+    if (data.raw.domain) userPrompt += `// Projet : ${data.raw.domain}\n`;
+    if (data.raw.inputDescription) userPrompt += `// Contexte : ${data.raw.inputDescription}\n`;
+    userPrompt += '\n';
+
+    if (data.examples && data.examples.length > 0) {
+      userPrompt += '// Exemples :\n';
+      data.examples.forEach((ex, i) => {
+        userPrompt += `// ${i + 1}. ${ex.input} -> ${ex.output}\n`;
+      });
+      userPrompt += '\n';
+    }
+
+    if (data.raw.smartAnswers && data.raw.smartAnswers.length > 0) {
+      data.raw.smartAnswers.forEach(qa => { userPrompt += `// ${qa.question} : ${qa.answer}\n`; });
+      userPrompt += '\n';
+    }
+
+    if (data.chainOfThought) userPrompt += '// Raisonne etape par etape\n\n';
+    userPrompt += `// TODO: ${data.task}`;
+
+    const notes = [
+      'Pour le chat Copilot : collez le system prompt dans les instructions personnalisees.',
+      'Pour les completions inline : utilisez les commentaires // comme contexte.',
+      'Commandes utiles : /explain, /fix, /tests, /doc dans le chat.',
+      'Copilot utilise le fichier ouvert + onglets voisins comme contexte automatique.'
     ];
 
     return { systemPrompt, userPrompt, notes };
@@ -553,6 +908,84 @@ const LLMAdapters = {
     return { systemPrompt: 'Prompt image (langage naturel descriptif)', userPrompt: prompt, notes };
   },
 
+  formatForDallE(data) {
+    const img = data.raw.imageData || {};
+    // DALL-E 3 uses natural language paragraphs - no weights, no negative prompts
+    let prompt = '';
+    prompt += img.subject || data.task;
+    if (img.style) prompt += `. Style: ${this._imageStyleLabel(img.style)}`;
+    if (img.composition) prompt += `. Composition: ${this._compositionLabel(img.composition)}`;
+    if (img.lighting) prompt += `. Lighting: ${this._lightingLabel(img.lighting)}`;
+
+    const quality = img.quality || 'standard';
+    if (quality === 'high') prompt += '. Highly detailed, sharp focus, professional quality.';
+    if (quality === 'masterpiece') prompt += '. Masterful composition, extraordinary detail, museum-quality artwork.';
+
+    const notes = [
+      'DALL-E 3 comprend le langage naturel - ecrivez des descriptions completes et detaillees.',
+      'PAS de negative prompts ni de poids (1.3) - DALL-E ne les supporte pas.',
+      'Parametres API : quality="hd" pour haute qualite, size="1792x1024" pour paysage.',
+      'DALL-E reformule automatiquement votre prompt - verifiez le "revised_prompt" retourne.',
+      'Conseil : Decrivez la scene comme un paragraphe de roman, pas une liste de mots-cles.'
+    ];
+
+    return { systemPrompt: 'Prompt DALL-E 3 (langage naturel descriptif)', userPrompt: prompt, notes };
+  },
+
+  formatForMidjourney(data) {
+    const img = data.raw.imageData || {};
+    let prompt = '';
+    prompt += img.subject || data.task;
+    if (img.style) prompt += `, ${this._imageStyleLabel(img.style)}`;
+    if (img.composition) prompt += `, ${this._compositionLabel(img.composition)}`;
+    if (img.lighting) prompt += `, ${this._lightingLabel(img.lighting)}`;
+
+    const quality = img.quality || 'standard';
+    if (quality === 'high') prompt += ', highly detailed, sharp';
+    if (quality === 'masterpiece') prompt += ', masterpiece, award-winning, extraordinary detail';
+
+    // Midjourney parameters
+    let params = ' --v 6.1';
+    if (quality === 'high' || quality === 'masterpiece') params += ' --s 750';
+
+    const negativePrompt = img.negative ? ` --no ${img.negative}` : '';
+
+    const notes = [
+      'Format Midjourney : [Description] --parametres',
+      `Prompt complet avec parametres : ${prompt}${params}${negativePrompt}`,
+      'Parametres utiles : --ar 16:9 (ratio), --s 750 (stylize), --c 30 (chaos), --w 100 (weird).',
+      'Les prompts courts et evocateurs marchent souvent mieux que les longs.',
+      'Utilisez :: pour donner des poids : "chat::2 chapeau::1" = plus de chat que de chapeau.'
+    ];
+
+    return { systemPrompt: 'Prompt Midjourney (mots-cles + parametres)', userPrompt: prompt + params + negativePrompt, notes };
+  },
+
+  formatForIdeogram(data) {
+    const img = data.raw.imageData || {};
+    let prompt = '';
+    prompt += img.subject || data.task;
+    if (img.style) prompt += `, ${this._imageStyleLabel(img.style)}`;
+    if (img.composition) prompt += `, ${this._compositionLabel(img.composition)}`;
+    if (img.lighting) prompt += `, ${this._lightingLabel(img.lighting)}`;
+
+    const quality = img.quality || 'standard';
+    if (quality === 'high') prompt += ', high quality, detailed, professional';
+    if (quality === 'masterpiece') prompt += ', masterpiece, exceptional quality, extraordinary detail';
+
+    let negativePrompt = img.negative || '';
+
+    const notes = [
+      'Ideogram est le meilleur modele pour le texte dans les images (logos, titres, typographie).',
+      'Ecrivez le texte exact entre guillemets dans votre prompt : "Texte a afficher".',
+      negativePrompt ? `Negative prompt : ${negativePrompt}` : 'Ajoutez un negative prompt pour eviter les elements indesirables.',
+      'Style presets disponibles : Design, Realistic, Anime, 3D, General.',
+      'Magic Prompt (auto-enhancement) est active par defaut - desactivez-le pour un controle total.'
+    ];
+
+    return { systemPrompt: 'Prompt Ideogram (texte + style)', userPrompt: prompt, notes };
+  },
+
   // ===================================================================
   // VIDEO MODELS
   // ===================================================================
@@ -576,6 +1009,68 @@ const LLMAdapters = {
     ];
 
     return { systemPrompt: 'Prompt video (langage cinematographique)', userPrompt: prompt, notes };
+  },
+
+  formatForRunway(data) {
+    const vid = data.raw.videoData || {};
+    let prompt = '';
+    if (vid.shot) prompt += `${this._shotLabel(vid.shot)}, `;
+    prompt += vid.subject || data.task;
+    if (vid.style) prompt += `, ${vid.style}`;
+    if (vid.tempo) prompt += `, ${this._tempoLabel(vid.tempo)}`;
+    prompt += ', cinematic quality';
+
+    const notes = [
+      'Format Runway Gen-3 : [Camera] + [Sujet en mouvement] + [Style] + [Tempo]',
+      'Utilisez le Motion Brush pour controler le mouvement de zones specifiques.',
+      'Les descriptions de mouvement continu fonctionnent mieux que les coupes.',
+      'Duree : 4 a 10 secondes par generation. Planifiez vos scenes en consequence.',
+      'Conseil : Decrivez une seule action fluide, pas une sequence complete.'
+    ];
+
+    return { systemPrompt: 'Prompt video Runway (mouvement + camera)', userPrompt: prompt, notes };
+  },
+
+  formatForSora(data) {
+    const vid = data.raw.videoData || {};
+    // Sora works best with detailed paragraph descriptions
+    let prompt = '';
+    if (vid.shot) prompt += `${this._shotLabel(vid.shot)} of `;
+    prompt += vid.subject || data.task;
+    prompt += '.';
+    if (vid.style) prompt += ` The visual style is ${vid.style}.`;
+    if (vid.tempo) prompt += ` The pacing is ${this._tempoLabel(vid.tempo)}.`;
+    prompt += ' Cinematic quality, professional cinematography, consistent lighting throughout.';
+
+    const notes = [
+      'Sora comprend le langage naturel - ecrivez comme un script de film detaille.',
+      'Decrivez le mouvement de camera avec precision (travelling, zoom, panoramique).',
+      'Les descriptions d\'atmosphere et de lumiere ameliorent significativement le resultat.',
+      'Sora peut gerer des scenes avec plusieurs personnages et interactions.',
+      'Conseil : Incluez des details sur les textures, materiaux et ambiance.'
+    ];
+
+    return { systemPrompt: 'Prompt video Sora (description narrative)', userPrompt: prompt, notes };
+  },
+
+  formatForKling(data) {
+    const vid = data.raw.videoData || {};
+    let prompt = '';
+    if (vid.shot) prompt += `${this._shotLabel(vid.shot)}, `;
+    prompt += vid.subject || data.task;
+    if (vid.style) prompt += `, ${vid.style} style`;
+    if (vid.tempo) prompt += `, ${this._tempoLabel(vid.tempo)}`;
+    prompt += ', high fidelity, smooth motion';
+
+    const notes = [
+      'Kling excelle pour les mouvements fluides et les expressions faciales.',
+      'Mode "Master" pour la meilleure qualite (plus lent).',
+      'Supporte les images de reference pour guider la generation.',
+      'Les descriptions precises du mouvement corporel donnent de meilleurs resultats.',
+      'Duree : jusqu\'a 10 secondes en mode haute qualite.'
+    ];
+
+    return { systemPrompt: 'Prompt video Kling (mouvement fluide)', userPrompt: prompt, notes };
   },
 
   // ===================================================================

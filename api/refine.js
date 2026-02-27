@@ -55,6 +55,36 @@ Retourne un JSON valide avec exactement 2 champs :
 - Les notes doivent etre concises, en francais, format liste a puces markdown
 - Retourne UNIQUEMENT le JSON, rien d'autre`;
 
+const REFINE_AGENT_SYSTEM_PROMPT = `Tu es un expert en creation d'agents IA (GPT ChatGPT, Projet Claude, Gem Gemini).
+Tu recois la configuration d'un agent et tu dois l'optimiser pour maximiser sa performance.
+
+## Principes d'optimisation agent
+1. **Instructions structurees** : Organise en sections claires (Role, Comportement, Regles, Format de reponse, Limites)
+2. **Perimetre defini** : L'agent doit savoir exactement ce qu'il fait ET ce qu'il ne fait pas
+3. **Ton et personnalite** : Definir comment l'agent communique
+4. **Gestion des cas limites** : Comment reagir aux demandes hors perimetre
+5. **Exemples implicites** : Integrer des patterns de reponse dans les instructions
+
+## Format de sortie OBLIGATOIRE
+Retourne un JSON valide avec exactement 2 champs :
+{
+  "optimizedPrompt": { /* memes champs que l'input mais optimises */ },
+  "notes": "3-5 bullet points expliquant les ameliorations cles"
+}
+
+Le champ "optimizedPrompt" doit avoir la MEME STRUCTURE que l'input :
+- Pour Claude : { "workingOn", "tryingToDo", "instructions" }
+- Pour ChatGPT : { "name", "description", "instructions", "conversationStarters" }
+- Pour Gemini : { "name", "description", "instructions" }
+
+## Regles
+- Conserve la langue d'origine
+- Enrichis substantiellement les instructions (structure, regles, exemples de comportement)
+- Ameliore le nom et la description pour etre plus accrocheur et precis
+- Pour les amorces ChatGPT : genere des amorces pertinentes et variees
+- Les notes doivent etre concises, en francais, format liste a puces markdown
+- Retourne UNIQUEMENT le JSON, rien d'autre`;
+
 async function callAnthropic(apiKey, systemPrompt, userMessage) {
   const client = new Anthropic({ apiKey });
   const response = await client.messages.create({
@@ -94,20 +124,39 @@ async function callOpenAI(apiKey, systemPrompt, userMessage) {
 }
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const allowedOrigins = ['https://prompt-factory-chi.vercel.app', 'http://localhost:3000', 'http://localhost:5500', 'http://127.0.0.1:5500'];
+  const origin = req.headers.origin;
+  const corsOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+  res.setHeader('Access-Control-Allow-Origin', corsOrigin);
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ message: 'Method not allowed' });
 
-  const { prompt, targetLLM, taskType, complexity, apiKey, openaiKey } = req.body;
+  const { prompt, targetLLM, taskType, complexity, apiKey, openaiKey, mode, platform, agentData } = req.body;
 
   if (!prompt || (!apiKey && !openaiKey)) {
     return res.status(400).json({ message: 'Le prompt et au moins une cle API sont requis.' });
   }
 
-  const userPrompt = `Modele cible : ${targetLLM || 'generique'}
+  // Choose system prompt and build user message based on mode
+  let systemPrompt, userPrompt;
+
+  if (mode === 'agent' && platform) {
+    systemPrompt = REFINE_AGENT_SYSTEM_PROMPT;
+    const platformNames = { claude: 'Projet Claude', chatgpt: 'GPT ChatGPT', gemini: 'Gem Gemini' };
+    userPrompt = `Plateforme : ${platform} (${platformNames[platform] || platform})
+
+Configuration actuelle de l'agent :
+---
+${JSON.stringify(agentData, null, 2)}
+---
+
+Optimise cette configuration et retourne le JSON avec optimizedPrompt (meme structure) et notes.`;
+  } else {
+    systemPrompt = REFINE_SYSTEM_PROMPT;
+    userPrompt = `Modele cible : ${targetLLM || 'generique'}
 Type de tache : ${taskType || 'non specifie'}
 Niveau de complexite : ${complexity || 'basic'}
 
@@ -117,6 +166,7 @@ ${prompt}
 ---
 
 Retourne le JSON avec optimizedPrompt et notes.`;
+  }
 
   function parseResult(rawText) {
     let text = rawText.trim();
@@ -134,7 +184,7 @@ Retourne le JSON avec optimizedPrompt et notes.`;
   // Try Anthropic first
   if (apiKey) {
     try {
-      const result = await callAnthropic(apiKey, REFINE_SYSTEM_PROMPT, userPrompt);
+      const result = await callAnthropic(apiKey, systemPrompt, userPrompt);
       const parsed = parseResult(result.text);
       return res.status(200).json({
         optimizedPrompt: parsed.optimizedPrompt,
@@ -156,7 +206,7 @@ Retourne le JSON avec optimizedPrompt et notes.`;
   // Fallback to OpenAI
   if (openaiKey) {
     try {
-      const result = await callOpenAI(openaiKey, REFINE_SYSTEM_PROMPT, userPrompt);
+      const result = await callOpenAI(openaiKey, systemPrompt, userPrompt);
       const parsed = parseResult(result.text);
       return res.status(200).json({
         optimizedPrompt: parsed.optimizedPrompt,

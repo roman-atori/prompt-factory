@@ -8,6 +8,7 @@ Ton role est de poser 3 a 5 questions PERTINENTES et CIBLEES pour ameliorer ce p
 Regles strictes :
 - Chaque question doit aider a affiner le prompt final
 - Ne pose PAS de questions dont la reponse est deja dans les donnees fournies
+- Si un texte libre de l'utilisateur est fourni, NE POSE PAS de questions dont la reponse est deja dans ce texte
 - Adapte les questions au type de tache et au modele cible
 - Pose des questions sur les aspects manquants : exemples specifiques, cas limites, contraintes non dites, preferences de style, structure attendue
 - Langue : francais
@@ -21,13 +22,34 @@ Format de sortie OBLIGATOIRE : un JSON array d'objets avec ces champs :
 
 Retourne UNIQUEMENT le JSON, sans commentaire ni explication.`;
 
-async function callAnthropic(apiKey, userMessage) {
+const QUESTIONS_AGENT_SYSTEM_PROMPT = `Tu es un expert en creation d'agents IA (GPT ChatGPT, Projet Claude, Gem Gemini).
+On te fournit la configuration d'un agent en cours de creation.
+
+Ton role est de poser 3 a 5 questions PERTINENTES pour ameliorer la configuration de cet agent.
+
+Regles strictes :
+- Chaque question doit aider a affiner les instructions ou la configuration de l'agent
+- Ne pose PAS de questions dont la reponse est deja dans les donnees fournies
+- Adapte les questions a la plateforme cible et au type d'agent
+- Pose des questions sur : le ton souhaite, les cas limites, les sujets a eviter, les exemples de reponses attendues, la longueur des reponses, les sources a utiliser
+- Langue : francais
+
+Format de sortie OBLIGATOIRE : un JSON array d'objets avec ces champs :
+- "id" : identifiant unique (string, ex: "q1", "q2")
+- "question" : la question en francais
+- "placeholder" : texte d'aide pour le champ de reponse
+- "type" : "text" (input court), "textarea" (reponse longue), ou "choice" (options)
+- Si type="choice", ajouter un champ "options" : tableau de strings
+
+Retourne UNIQUEMENT le JSON, sans commentaire ni explication.`;
+
+async function callAnthropic(apiKey, userMessage, systemPrompt) {
   const client = new Anthropic({ apiKey });
   const response = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 1024,
     temperature: 0.5,
-    system: QUESTIONS_SYSTEM_PROMPT,
+    system: systemPrompt,
     messages: [{ role: 'user', content: userMessage }]
   });
   return {
@@ -38,14 +60,14 @@ async function callAnthropic(apiKey, userMessage) {
   };
 }
 
-async function callOpenAI(apiKey, userMessage) {
+async function callOpenAI(apiKey, userMessage, systemPrompt) {
   const client = new OpenAI({ apiKey });
   const response = await client.chat.completions.create({
     model: 'gpt-5.2-mini',
     max_completion_tokens: 1024,
     temperature: 0.5,
     messages: [
-      { role: 'system', content: QUESTIONS_SYSTEM_PROMPT },
+      { role: 'system', content: systemPrompt },
       { role: 'user', content: userMessage }
     ]
   });
@@ -74,7 +96,10 @@ function parseQuestions(rawText) {
 }
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const allowedOrigins = ['https://prompt-factory-chi.vercel.app', 'http://localhost:3000', 'http://localhost:5500', 'http://127.0.0.1:5500'];
+  const origin = req.headers.origin;
+  const corsOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+  res.setHeader('Access-Control-Allow-Origin', corsOrigin);
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -87,32 +112,54 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ message: 'Au moins une cle API est requise (Anthropic ou OpenAI).' });
   }
 
-  const summary = {
-    modeles: formData.targetLLMs,
-    tache: formData.taskType,
-    tacheCustom: formData.customTaskType || null,
-    domaine: formData.domain || null,
-    audience: formData.audience || null,
-    ton: formData.tone || null,
-    langue: formData.outputLanguage || null,
-    description: formData.taskDescription || null,
-    inputDescription: formData.inputDescription || null,
-    formatSortie: formData.outputFormat || null,
-    contraintes: formData.constraints || null,
-    complexite: formData.complexity || null,
-    persona: formData.persona || null,
-    fewShot: formData.fewShotEnabled || false,
-    chainOfThought: formData.chainOfThought || false
-  };
+  // Choose system prompt and build user message based on mode
+  let systemPrompt, userMessage;
 
-  const userMessage = `Donnees du formulaire :\n${JSON.stringify(summary, null, 2)}\n\nGenere les questions d'optimisation en JSON.`;
+  if (formData.mode === 'agent' && formData.agentData) {
+    systemPrompt = QUESTIONS_AGENT_SYSTEM_PROMPT;
+    const platformNames = { claude: 'Projet Claude', chatgpt: 'GPT ChatGPT', gemini: 'Gem Gemini' };
+    userMessage = `Plateforme : ${formData.agentData.platform} (${platformNames[formData.agentData.platform] || formData.agentData.platform})
+
+Configuration de l'agent :
+${JSON.stringify(formData.agentData, null, 2)}
+
+Description libre de l'utilisateur :
+${formData.agentDescription || '(non fournie)'}
+
+Genere les questions d'optimisation en JSON.`;
+  } else {
+    systemPrompt = QUESTIONS_SYSTEM_PROMPT;
+    const summary = {
+      modeles: formData.targetLLMs,
+      tache: formData.taskType,
+      tacheCustom: formData.customTaskType || null,
+      domaine: formData.domain || null,
+      audience: formData.audience || null,
+      ton: formData.tone || null,
+      langue: formData.outputLanguage || null,
+      description: formData.taskDescription || null,
+      inputDescription: formData.inputDescription || null,
+      formatSortie: formData.outputFormat || null,
+      contraintes: formData.constraints || null,
+      complexite: formData.complexity || null,
+      persona: formData.persona || null,
+      fewShot: formData.fewShotEnabled || false,
+      chainOfThought: formData.chainOfThought || false
+    };
+
+    userMessage = `Donnees du formulaire :\n${JSON.stringify(summary, null, 2)}\n\n`;
+    if (formData.freeDescription) {
+      userMessage += `Texte libre de l'utilisateur :\n${formData.freeDescription}\n\nImportant : ne pose pas de questions dont la reponse est deja dans le texte libre ci-dessus.\n\n`;
+    }
+    userMessage += `Genere les questions d'optimisation en JSON.`;
+  }
 
   let anthropicError = null;
 
   // Try Anthropic first
   if (apiKey) {
     try {
-      const result = await callAnthropic(apiKey, userMessage);
+      const result = await callAnthropic(apiKey, userMessage, systemPrompt);
       const questions = parseQuestions(result.text);
       return res.status(200).json({
         questions,
@@ -134,7 +181,7 @@ module.exports = async function handler(req, res) {
   // Fallback to OpenAI
   if (openaiKey) {
     try {
-      const result = await callOpenAI(openaiKey, userMessage);
+      const result = await callOpenAI(openaiKey, userMessage, systemPrompt);
       const questions = parseQuestions(result.text);
       return res.status(200).json({
         questions,

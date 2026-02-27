@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js" defer></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
   <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js" defer></script>
 </head>
@@ -18,16 +19,19 @@
   <header class="app-header">
     <div class="logo" id="logo-home" style="cursor:pointer">
       <h1>PROMPT FACTORY</h1>
-      <span class="tagline">Créez des prompts parfaits, étape par étape</span>
+      <span class="tagline">Creez des prompts et des agents IA, etape par etape</span>
     </div>
     <div style="display:flex;align-items:center;gap:var(--space-sm);">
       <button class="btn-guide" id="btn-guide" aria-label="Guide interactif">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         Guide
       </button>
-      <button class="btn-settings" id="btn-settings" aria-label="Parametres">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-    </button>
+      <button class="btn-icon-only" id="btn-dark-mode" aria-label="Mode sombre" title="Mode sombre">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="icon-dark-mode"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+      </button>
+      <button class="btn-icon-only" id="btn-settings" aria-label="Parametres" title="Parametres">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      </button>
     </div>
   </header>
 
@@ -59,11 +63,27 @@
   <!-- MAIN WIZARD -->
   <main class="wizard-container" id="wizard-container">
 
-    <!-- STEP 1: LLM Selection -->
-    <section class="wizard-step active" id="step-1" data-step="1">
+    <!-- ============================================ -->
+    <!-- PROMPT PATH: Step 1 (merged old steps 1+2)   -->
+    <!-- ============================================ -->
+    <section class="wizard-step active" id="step-prompt-1">
       <div class="step-card">
-        <h2>Quel(s) modèles ciblez-vous ?</h2>
-        <p class="step-description">Sélectionnez un ou plusieurs modèles. Le prompt sera optimisé pour chacun.</p>
+
+        <!-- Mode Toggle -->
+        <div class="mode-toggle">
+          <button class="mode-btn active" data-mode="prompt">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            Creer un Prompt
+          </button>
+          <button class="mode-btn" data-mode="agent">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 014 4v2a4 4 0 01-8 0V6a4 4 0 014-4z"/><path d="M16 14H8a4 4 0 00-4 4v2h16v-2a4 4 0 00-4-4z"/></svg>
+            Builder Agent
+            <span class="mode-badge">GPT / Projet / Gem</span>
+          </button>
+        </div>
+
+        <h2>Quel(s) modeles ciblez-vous ?</h2>
+        <p class="step-description">Selectionnez un ou plusieurs modeles. Le prompt sera optimise pour chacun.</p>
 
         <div class="models-columns">
           <div class="models-column">
@@ -71,11 +91,11 @@
             <div class="llm-grid llm-grid-vertical" id="llm-grid"></div>
           </div>
           <div class="models-column">
-            <h3 class="grid-label">Modèles image</h3>
+            <h3 class="grid-label">Modeles image</h3>
             <div class="llm-grid llm-grid-vertical" id="image-grid"></div>
           </div>
           <div class="models-column">
-            <h3 class="grid-label">Modèles vidéo</h3>
+            <h3 class="grid-label">Modeles video</h3>
             <div class="llm-grid llm-grid-vertical" id="video-grid"></div>
           </div>
           <div class="models-column">
@@ -84,115 +104,241 @@
           </div>
         </div>
 
-        <p class="validation-error hidden" id="error-step1">Veuillez sélectionner au moins un modèle.</p>
-      </div>
-    </section>
+        <p class="validation-error hidden" id="error-step1">Veuillez selectionner au moins un modele.</p>
 
-    <!-- STEP 2: Task Type + Persona -->
-    <section class="wizard-step" id="step-2" data-step="2">
-      <div class="step-card">
-        <h2>Type de tâche</h2>
-        <p class="step-description">Que doit faire le LLM ? Choisissez la catégorie la plus proche.</p>
+        <hr class="step-divider">
+
+        <h2>Type de tache</h2>
+        <p class="step-description">Que doit faire le LLM ? Choisissez la categorie la plus proche.</p>
         <div class="task-grid" id="task-grid"></div>
         <div class="custom-task hidden" id="custom-task">
-          <label for="custom-task-input">Décrivez votre type de tâche :</label>
-          <input type="text" id="custom-task-input" placeholder="Ex: Génération d'images, Roleplay...">
+          <label for="custom-task-input">Decrivez votre type de tache :</label>
+          <input type="text" id="custom-task-input" placeholder="Ex: Generation d'images, Roleplay...">
         </div>
-        <p class="validation-error hidden" id="error-step2">Veuillez sélectionner un type de tâche.</p>
+        <p class="validation-error hidden" id="error-step2">Veuillez selectionner un type de tache.</p>
 
         <div class="form-group" style="margin-top: var(--space-xl);">
-          <label for="persona">Rôle / Persona (optionnel)</label>
-          <input type="text" id="persona" placeholder='Ex: "Tu es un développeur senior Python avec 10 ans d&#39;expérience"'>
-          <p class="helper-text">Si vide, un rôle sera généré automatiquement selon le type de tâche.</p>
+          <label for="persona">Role / Persona (optionnel)</label>
+          <input type="text" id="persona" placeholder='Ex: "Tu es un developpeur senior Python avec 10 ans d&#39;experience"'>
+          <p class="helper-text">Si vide, un role sera genere automatiquement selon le type de tache.</p>
+        </div>
+
+        <div class="form-group" style="margin-top: var(--space-xl);">
+          <label for="free-description">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 4px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            Decrivez votre besoin librement (optionnel)
+          </label>
+          <textarea id="free-description" rows="4" placeholder="Ex: Je veux creer des histoires pour enfants de 3-5 ans sur la science, ton educatif, en francais, avec des illustrations detaillees pour chaque page..."></textarea>
+          <p class="helper-text">L'IA analysera votre texte et pre-remplira automatiquement les etapes suivantes.</p>
+          <div class="extract-status hidden" id="extract-status">
+            <div class="extract-spinner"></div>
+            <span id="extract-status-text">Analyse en cours...</span>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- STEP 3: Context & Audience -->
-    <section class="wizard-step" id="step-3" data-step="3">
+    <!-- ============================================ -->
+    <!-- AGENT PATH: Step 1 - Platform selection      -->
+    <!-- ============================================ -->
+    <section class="wizard-step" id="step-agent-1">
+      <div class="step-card">
+
+        <!-- Mode Toggle -->
+        <div class="mode-toggle">
+          <button class="mode-btn" data-mode="prompt">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            Creer un Prompt
+          </button>
+          <button class="mode-btn active" data-mode="agent">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 014 4v2a4 4 0 01-8 0V6a4 4 0 014-4z"/><path d="M16 14H8a4 4 0 00-4 4v2h16v-2a4 4 0 00-4-4z"/></svg>
+            Builder Agent
+            <span class="mode-badge">GPT / Projet / Gem</span>
+          </button>
+        </div>
+
+        <h2>Quelle plateforme ?</h2>
+        <p class="step-description">Choisissez la plateforme sur laquelle vous voulez creer votre agent.</p>
+
+        <div class="agent-platform-grid" id="agent-platform-grid"></div>
+        <p class="validation-error hidden" id="error-agent-1">Veuillez selectionner une plateforme.</p>
+      </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- AGENT PATH: Step 2 - Free description        -->
+    <!-- ============================================ -->
+    <section class="wizard-step" id="step-agent-2">
+      <div class="step-card">
+        <h2>Decrivez votre agent</h2>
+        <p class="step-description">Dites-nous ce que votre agent doit faire. L'IA extraira les champs specifiques.</p>
+
+        <div class="form-group">
+          <label for="agent-description">Description libre de votre agent *</label>
+          <textarea id="agent-description" rows="8" placeholder="Ex: Je veux un agent qui m'aide a rediger des articles SEO. Il doit connaitre les bonnes pratiques Google, proposer des titres accrocheurs, structurer en H1/H2/H3, et suggerer des mots-cles pertinents..."></textarea>
+          <p class="helper-text">Soyez aussi detaille que possible. L'IA pre-remplira les champs de la prochaine etape.</p>
+        </div>
+
+        <div class="extract-status hidden" id="agent-extract-status">
+          <div class="extract-spinner"></div>
+          <span id="agent-extract-status-text">Analyse en cours...</span>
+        </div>
+        <p class="validation-error hidden" id="error-agent-2">Veuillez decrire votre agent.</p>
+      </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- AGENT PATH: Step 3 - Platform-specific fields-->
+    <!-- ============================================ -->
+    <section class="wizard-step" id="step-agent-3">
+      <div class="step-card">
+        <h2 id="agent-fields-title">Configuration de votre agent</h2>
+        <p class="step-description">Les champs ont ete pre-remplis par l'IA. Ajustez-les selon vos besoins.</p>
+
+        <!-- Claude Projet fields -->
+        <div id="agent-fields-claude" class="agent-fields hidden">
+          <div class="form-group">
+            <label for="agent-claude-working-on">Sur quoi travaillez-vous ?</label>
+            <textarea id="agent-claude-working-on" rows="3" placeholder="Ex: Un blog de cuisine vegetarienne..."></textarea>
+          </div>
+          <div class="form-group">
+            <label for="agent-claude-trying-to">Qu'essayez-vous de faire ?</label>
+            <textarea id="agent-claude-trying-to" rows="3" placeholder="Ex: Generer des recettes saines et equilibrees..."></textarea>
+          </div>
+          <div class="form-group">
+            <label for="agent-claude-instructions">Instructions personnalisees *</label>
+            <textarea id="agent-claude-instructions" rows="10" placeholder="Instructions detaillees pour le Projet Claude..."></textarea>
+          </div>
+        </div>
+
+        <!-- ChatGPT GPT fields -->
+        <div id="agent-fields-chatgpt" class="agent-fields hidden">
+          <div class="form-group">
+            <label for="agent-chatgpt-name">Nom du GPT *</label>
+            <input type="text" id="agent-chatgpt-name" placeholder="Ex: SEO Expert Pro">
+          </div>
+          <div class="form-group">
+            <label for="agent-chatgpt-description">Description</label>
+            <textarea id="agent-chatgpt-description" rows="3" placeholder="Description courte du GPT..."></textarea>
+          </div>
+          <div class="form-group">
+            <label for="agent-chatgpt-instructions">Instructions *</label>
+            <textarea id="agent-chatgpt-instructions" rows="10" placeholder="Instructions detaillees pour le GPT..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>Amorces de conversation</label>
+            <div id="agent-chatgpt-starters"></div>
+            <button class="btn-secondary btn-sm" id="add-starter" style="margin-top: var(--space-sm);">+ Ajouter une amorce</button>
+          </div>
+        </div>
+
+        <!-- Gemini Gem fields -->
+        <div id="agent-fields-gemini" class="agent-fields hidden">
+          <div class="form-group">
+            <label for="agent-gemini-name">Nom du Gem *</label>
+            <input type="text" id="agent-gemini-name" placeholder="Ex: Assistant SEO">
+          </div>
+          <div class="form-group">
+            <label for="agent-gemini-description">Description</label>
+            <textarea id="agent-gemini-description" rows="3" placeholder="Description courte du Gem..."></textarea>
+          </div>
+          <div class="form-group">
+            <label for="agent-gemini-instructions">Instructions *</label>
+            <textarea id="agent-gemini-instructions" rows="10" placeholder="Instructions detaillees pour le Gem..."></textarea>
+          </div>
+        </div>
+
+        <p class="validation-error hidden" id="error-agent-3">Veuillez remplir les instructions.</p>
+      </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- PROMPT PATH: Step 2 - Context & Audience     -->
+    <!-- ============================================ -->
+    <section class="wizard-step" id="step-prompt-2">
       <div class="step-card">
         <h2>Contexte et audience</h2>
-        <p class="step-description">Qui va lire la réponse ? Dans quel contexte ? Vous pouvez sélectionner plusieurs options.</p>
+        <p class="step-description">Qui va lire la reponse ? Dans quel contexte ? Vous pouvez selectionner plusieurs options.</p>
 
         <div class="form-group">
           <label>Domaine / Sujet</label>
-          <div class="multi-select" id="ms-domain" data-field="domain" data-placeholder="Choisir un ou plusieurs domaines" data-autre-placeholder="Ajouter un domaine personnalisé...">
+          <div class="multi-select" id="ms-domain" data-field="domain" data-placeholder="Choisir un ou plusieurs domaines" data-autre-placeholder="Ajouter un domaine personnalise...">
           </div>
           <select id="domain" class="hidden">
             <option value="">-- Choisir un domaine --</option>
             <option value="marketing-digital">Marketing digital</option>
-            <option value="developpement-web">Développement web</option>
+            <option value="developpement-web">Developpement web</option>
             <option value="data-science">Data Science / IA</option>
-            <option value="finance">Finance / Comptabilité</option>
+            <option value="finance">Finance / Comptabilite</option>
             <option value="droit">Droit</option>
-            <option value="medecine">Médecine / Santé</option>
-            <option value="education">Éducation</option>
+            <option value="medecine">Medecine / Sante</option>
+            <option value="education">Education</option>
             <option value="ecommerce">E-commerce</option>
             <option value="rh">Ressources humaines</option>
             <option value="design">Design / UX</option>
-            <option value="journalisme">Journalisme / Rédaction</option>
+            <option value="journalisme">Journalisme / Redaction</option>
             <option value="immobilier">Immobilier</option>
             <option value="logistique">Logistique / Supply chain</option>
-            <option value="cybersecurite">Cybersécurité</option>
+            <option value="cybersecurite">Cybersecurite</option>
           </select>
         </div>
 
         <div class="form-row">
           <div class="form-group">
             <label>Public cible</label>
-            <div class="multi-select" id="ms-audience" data-field="audience" data-placeholder="Choisir un ou plusieurs publics" data-autre-placeholder="Ajouter un public personnalisé...">
+            <div class="multi-select" id="ms-audience" data-field="audience" data-placeholder="Choisir un ou plusieurs publics" data-autre-placeholder="Ajouter un public personnalise...">
             </div>
             <select id="audience" class="hidden">
               <option value="">-- Choisir --</option>
               <option value="general">Grand public</option>
-              <option value="technical">Développeurs / Technique</option>
+              <option value="technical">Developpeurs / Technique</option>
               <option value="business">Business / Management</option>
-              <option value="academic">Académique / Recherche</option>
-              <option value="children">Enfants / Débutants</option>
+              <option value="academic">Academique / Recherche</option>
+              <option value="children">Enfants / Debutants</option>
               <option value="marketers">Marketeurs</option>
               <option value="designers">Designers</option>
-              <option value="students">Étudiants</option>
+              <option value="students">Etudiants</option>
               <option value="executives">Dirigeants / C-Level</option>
               <option value="hr">RH / Recruteurs</option>
               <option value="sales">Commerciaux / Ventes</option>
               <option value="legal">Juristes</option>
-              <option value="medical">Professionnels de santé</option>
+              <option value="medical">Professionnels de sante</option>
             </select>
           </div>
           <div class="form-group">
             <label>Langue de sortie</label>
-            <div class="multi-select" id="ms-output-language" data-field="output-language" data-placeholder="Choisir une ou plusieurs langues" data-autre-placeholder="Ajouter une langue personnalisée...">
+            <div class="multi-select" id="ms-output-language" data-field="output-language" data-placeholder="Choisir une ou plusieurs langues" data-autre-placeholder="Ajouter une langue personnalisee...">
             </div>
             <select id="output-language" class="hidden">
-              <option value="francais" selected>Français</option>
+              <option value="francais" selected>Francais</option>
               <option value="english">English</option>
-              <option value="espanol">Español</option>
+              <option value="espanol">Espanol</option>
               <option value="deutsch">Deutsch</option>
               <option value="italiano">Italiano</option>
-              <option value="portugues">Português</option>
-              <option value="arabic">العربية (Arabe)</option>
-              <option value="chinese">中文 (Chinois)</option>
-              <option value="japanese">日本語 (Japonais)</option>
-              <option value="korean">한국어 (Coréen)</option>
-              <option value="russian">Русский (Russe)</option>
-              <option value="dutch">Nederlands (Néerlandais)</option>
-              <option value="polish">Polski (Polonais)</option>
-              <option value="turkish">Türkçe (Turc)</option>
-              <option value="hindi">हिन्दी (Hindi)</option>
+              <option value="portugues">Portugues</option>
+              <option value="arabic">Arabe</option>
+              <option value="chinese">Chinois</option>
+              <option value="japanese">Japonais</option>
+              <option value="korean">Coreen</option>
+              <option value="russian">Russe</option>
+              <option value="dutch">Neerlandais</option>
+              <option value="polish">Polonais</option>
+              <option value="turkish">Turc</option>
+              <option value="hindi">Hindi</option>
             </select>
           </div>
         </div>
 
         <div class="form-group">
           <label>Ton</label>
-          <div class="multi-select" id="ms-tone" data-field="tone" data-placeholder="Choisir un ou plusieurs tons" data-autre-placeholder="Ajouter un ton personnalisé...">
+          <div class="multi-select" id="ms-tone" data-field="tone" data-placeholder="Choisir un ou plusieurs tons" data-autre-placeholder="Ajouter un ton personnalise...">
           </div>
           <select id="tone" class="hidden">
             <option value="professionnel" selected>Professionnel</option>
-            <option value="decontracte">Décontracté</option>
-            <option value="creatif">Créatif</option>
+            <option value="decontracte">Decontracte</option>
+            <option value="creatif">Creatif</option>
             <option value="technique">Technique</option>
-            <option value="pedagogique">Pédagogique</option>
+            <option value="pedagogique">Pedagogique</option>
             <option value="formel">Formel</option>
             <option value="humoristique">Humoristique</option>
             <option value="empathique">Empathique</option>
@@ -207,23 +353,25 @@
       </div>
     </section>
 
-    <!-- STEP 4: Task Details -->
-    <section class="wizard-step" id="step-4" data-step="4">
+    <!-- ============================================ -->
+    <!-- PROMPT PATH: Step 3 - Task Details           -->
+    <!-- ============================================ -->
+    <section class="wizard-step" id="step-prompt-3">
       <div class="step-card">
-        <h2>Détails de la tâche</h2>
-        <p class="step-description">Décrivez précisément ce que le prompt doit accomplir.</p>
+        <h2>Details de la tache</h2>
+        <p class="step-description">Decrivez precisement ce que le prompt doit accomplir.</p>
 
         <!-- Standard text LLM fields -->
         <div id="text-fields">
           <div class="form-group">
-            <label for="task-description">Description détaillée de la tâche *</label>
-            <textarea id="task-description" rows="4" placeholder="Que doit faire le LLM exactement ? Soyez aussi précis que possible."></textarea>
+            <label for="task-description">Description detaillee de la tache *</label>
+            <textarea id="task-description" rows="4" placeholder="Que doit faire le LLM exactement ? Soyez aussi precis que possible."></textarea>
           </div>
 
           <div class="form-group">
-            <label for="input-description">Données d'entrée fournies au LLM</label>
-            <textarea id="input-description" rows="3" placeholder="Décrivez ce que vous fournirez au LLM en entrée. Ex : 'Un texte de 500 mots à résumer', 'Des données CSV avec 3 colonnes', 'Un email client auquel répondre'..."></textarea>
-            <p class="helper-text">Quel type de contenu le LLM recevra-t-il pour travailler ? Cela aide à adapter le prompt.</p>
+            <label for="input-description">Donnees d'entree fournies au LLM</label>
+            <textarea id="input-description" rows="3" placeholder="Decrivez ce que vous fournirez au LLM en entree. Ex : 'Un texte de 500 mots a resumer', 'Des donnees CSV avec 3 colonnes', 'Un email client auquel repondre'..."></textarea>
+            <p class="helper-text">Quel type de contenu le LLM recevra-t-il pour travailler ? Cela aide a adapter le prompt.</p>
             <div class="upload-zone" id="upload-zone">
               <label class="btn-upload" for="file-upload">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -238,13 +386,13 @@
           </div>
 
           <div class="form-group">
-            <label for="output-format">Format de sortie souhaité</label>
+            <label for="output-format">Format de sortie souhaite</label>
             <select id="output-format">
               <option value="texte" selected>Texte libre</option>
               <option value="json">JSON</option>
               <option value="markdown">Markdown</option>
               <option value="code">Code source</option>
-              <option value="liste">Liste à puces</option>
+              <option value="liste">Liste a puces</option>
               <option value="tableau">Tableau</option>
               <option value="html">HTML</option>
               <option value="csv">CSV</option>
@@ -253,24 +401,24 @@
               <option value="email">Email</option>
               <option value="article">Article</option>
               <option value="rapport">Rapport</option>
-              <option value="presentation">Présentation (slides)</option>
+              <option value="presentation">Presentation (slides)</option>
               <option value="autre">Autre...</option>
             </select>
-            <input type="text" id="output-format-autre" class="autre-input hidden" placeholder="Précisez le format de sortie...">
+            <input type="text" id="output-format-autre" class="autre-input hidden" placeholder="Precisez le format de sortie...">
           </div>
 
           <div class="form-group">
-            <label for="constraints">Contraintes spécifiques (optionnel)</label>
-            <textarea id="constraints" rows="3" placeholder="Ex: Maximum 500 mots, toujours citer les sources, ne pas inventer de données..."></textarea>
+            <label for="constraints">Contraintes specifiques (optionnel)</label>
+            <textarea id="constraints" rows="3" placeholder="Ex: Maximum 500 mots, toujours citer les sources, ne pas inventer de donnees..."></textarea>
           </div>
         </div>
 
-        <!-- Image generation fields (shown when image task/model selected) -->
+        <!-- Image generation fields -->
         <div id="image-fields" class="hidden">
           <div class="form-group">
             <label for="img-subject">Sujet principal *</label>
-            <textarea id="img-subject" rows="2" placeholder="Ex: Un chat siamois assis sur un rebord de fenêtre, regardant la pluie"></textarea>
-            <p class="helper-text">Soyez précis : remplacez "un chat" par sa race, sa pose, son expression.</p>
+            <textarea id="img-subject" rows="2" placeholder="Ex: Un chat siamois assis sur un rebord de fenetre, regardant la pluie"></textarea>
+            <p class="helper-text">Soyez precis : remplacez "un chat" par sa race, sa pose, son expression.</p>
           </div>
 
           <div class="form-row">
@@ -278,28 +426,28 @@
               <label for="img-style">Style artistique</label>
               <select id="img-style">
                 <option value="">-- Choisir --</option>
-                <option value="photorealistic">Photoréaliste</option>
+                <option value="photorealistic">Photorealiste</option>
                 <option value="digital-art">Art digital</option>
-                <option value="oil-painting">Peinture à l'huile</option>
+                <option value="oil-painting">Peinture a l'huile</option>
                 <option value="watercolor">Aquarelle</option>
                 <option value="anime">Anime / Manga</option>
                 <option value="3d-render">Rendu 3D</option>
                 <option value="pencil-sketch">Dessin au crayon</option>
                 <option value="vintage-photo">Photo vintage (Kodak Portra 400)</option>
                 <option value="minimalist">Minimaliste</option>
-                <option value="surrealist">Surréaliste</option>
+                <option value="surrealist">Surrealiste</option>
               </select>
             </div>
             <div class="form-group">
-              <label for="img-lighting">Éclairage</label>
+              <label for="img-lighting">Eclairage</label>
               <select id="img-lighting">
                 <option value="">-- Choisir --</option>
-                <option value="natural">Lumière naturelle</option>
+                <option value="natural">Lumiere naturelle</option>
                 <option value="golden-hour">Golden hour</option>
-                <option value="studio">Éclairage studio</option>
+                <option value="studio">Eclairage studio</option>
                 <option value="dramatic">Clair-obscur dramatique</option>
-                <option value="neon">Néon / Cyberpunk</option>
-                <option value="soft">Lumière douce diffuse</option>
+                <option value="neon">Neon / Cyberpunk</option>
+                <option value="soft">Lumiere douce diffuse</option>
                 <option value="backlit">Contre-jour</option>
               </select>
             </div>
@@ -310,17 +458,17 @@
               <label for="img-composition">Composition</label>
               <select id="img-composition">
                 <option value="">-- Choisir --</option>
-                <option value="rule-of-thirds">Règle des tiers</option>
-                <option value="centered">Centré / Symétrique</option>
+                <option value="rule-of-thirds">Regle des tiers</option>
+                <option value="centered">Centre / Symetrique</option>
                 <option value="close-up">Gros plan</option>
                 <option value="wide-shot">Plan large</option>
-                <option value="birds-eye">Vue aérienne</option>
-                <option value="low-angle">Contre-plongée</option>
+                <option value="birds-eye">Vue aerienne</option>
+                <option value="low-angle">Contre-plongee</option>
                 <option value="macro">Macro</option>
               </select>
             </div>
             <div class="form-group">
-              <label for="img-quality">Qualité</label>
+              <label for="img-quality">Qualite</label>
               <div class="radio-pills">
                 <label class="pill"><input type="radio" name="img-quality" value="standard" checked><span>Standard</span></label>
                 <label class="pill"><input type="radio" name="img-quality" value="high"><span>Haute (8K, ultra detailed)</span></label>
@@ -330,9 +478,9 @@
           </div>
 
           <div class="form-group">
-            <label for="img-negative">Prompts négatifs (à éviter)</label>
+            <label for="img-negative">Prompts negatifs (a eviter)</label>
             <textarea id="img-negative" rows="2" placeholder="Ex: blurry, distorted, extra limbs, watermark, text, low quality"></textarea>
-            <p class="helper-text">Éléments à exclure de l'image générée. Séparez par des virgules.</p>
+            <p class="helper-text">Elements a exclure de l'image generee. Separez par des virgules.</p>
           </div>
         </div>
 
@@ -340,7 +488,7 @@
         <div id="video-fields" class="hidden">
           <div class="form-group">
             <label for="vid-subject">Sujet et action *</label>
-            <textarea id="vid-subject" rows="2" placeholder="Ex: Une femme marche dans une rue de Tokyo la nuit, les enseignes néon se reflètent sur le sol mouillé"></textarea>
+            <textarea id="vid-subject" rows="2" placeholder="Ex: Une femme marche dans une rue de Tokyo la nuit, les enseignes neon se refletent sur le sol mouille"></textarea>
           </div>
 
           <div class="form-row">
@@ -361,43 +509,43 @@
               <select id="vid-tempo">
                 <option value="">-- Choisir --</option>
                 <option value="slow-motion">Ralenti (slow motion)</option>
-                <option value="real-time">Temps réel</option>
+                <option value="real-time">Temps reel</option>
                 <option value="timelapse">Timelapse</option>
                 <option value="quick-cuts">Montage rapide</option>
-                <option value="continuous">Plan-séquence continu</option>
+                <option value="continuous">Plan-sequence continu</option>
               </select>
             </div>
           </div>
 
           <div class="form-group">
-            <label for="vid-style">Style cinématographique</label>
-            <input type="text" id="vid-style" placeholder="Ex: Cinématique, film noir, documentaire, anime...">
+            <label for="vid-style">Style cinematographique</label>
+            <input type="text" id="vid-style" placeholder="Ex: Cinematique, film noir, documentaire, anime...">
           </div>
         </div>
 
-        <p class="validation-error hidden" id="error-step4">Veuillez décrire la tâche.</p>
+        <p class="validation-error hidden" id="error-step4">Veuillez decrire la tache.</p>
       </div>
     </section>
 
-    <!-- STEP 5: Advanced Options -->
-    <section class="wizard-step" id="step-5" data-step="5">
+    <!-- ============================================ -->
+    <!-- PROMPT PATH: Step 4 - Advanced Options       -->
+    <!-- ============================================ -->
+    <section class="wizard-step" id="step-prompt-4">
       <div class="step-card">
-        <h2>Options avancées</h2>
+        <h2>Options avancees</h2>
         <p class="step-description">Affinez votre prompt avec des techniques de prompt engineering.</p>
 
-        <!-- Complexity level (Progressive Disclosure from antigravity skill) -->
         <div class="form-group">
-          <label>Niveau de complexité du prompt</label>
-          <p class="helper-text" style="margin-bottom: var(--space-sm);">Détermine la profondeur et la sophistication du prompt généré.</p>
+          <label>Niveau de complexite du prompt</label>
+          <p class="helper-text" style="margin-bottom: var(--space-sm);">Determine la profondeur et la sophistication du prompt genere.</p>
           <div class="radio-pills" id="complexity-group">
             <label class="pill"><input type="radio" name="complexity" value="basic" checked><span>Basique</span></label>
-            <label class="pill"><input type="radio" name="complexity" value="intermediate"><span>Intermédiaire</span></label>
-            <label class="pill"><input type="radio" name="complexity" value="advanced"><span>Avancé</span></label>
+            <label class="pill"><input type="radio" name="complexity" value="intermediate"><span>Intermediaire</span></label>
+            <label class="pill"><input type="radio" name="complexity" value="advanced"><span>Avance</span></label>
             <label class="pill"><input type="radio" name="complexity" value="expert"><span>Expert</span></label>
           </div>
         </div>
 
-        <!-- Few-shot toggle -->
         <div class="toggle-section">
           <div class="toggle-header" id="few-shot-header">
             <label class="toggle-switch">
@@ -406,7 +554,7 @@
             </label>
             <div class="toggle-label">
               <span>Exemples few-shot</span>
-              <span class="helper-text">Montrez au LLM des exemples concrets de ce que vous attendez. L'« Entrée » est ce que l'utilisateur envoie au LLM, la « Sortie » est la réponse idéale que le LLM devrait produire.</span>
+              <span class="helper-text">Montrez au LLM des exemples concrets de ce que vous attendez. L'Entree est ce que l'utilisateur envoie au LLM, la Sortie est la reponse ideale que le LLM devrait produire.</span>
             </div>
             <span class="badge hidden" id="few-shot-count">0</span>
           </div>
@@ -416,7 +564,6 @@
           </div>
         </div>
 
-        <!-- Chain-of-thought toggle -->
         <div class="toggle-section" id="cot-section">
           <div class="toggle-header">
             <label class="toggle-switch">
@@ -424,37 +571,38 @@
               <span class="toggle-slider"></span>
             </label>
             <div class="toggle-label">
-              <span>Activer le raisonnement étape par étape (Chain-of-Thought)</span>
-              <span class="helper-text">Concrètement : le LLM décomposera sa réflexion en étapes visibles avant de donner sa réponse finale. Par exemple, pour un calcul complexe, il montrera chaque étape du raisonnement. Cela améliore la qualité pour les tâches de logique, maths, code et analyse.</span>
+              <span>Activer le raisonnement etape par etape (Chain-of-Thought)</span>
+              <span class="helper-text">Concretement : le LLM decomposera sa reflexion en etapes visibles avant de donner sa reponse finale. Par exemple, pour un calcul complexe, il montrera chaque etape du raisonnement. Cela ameliore la qualite pour les taches de logique, maths, code et analyse.</span>
             </div>
-            <span class="badge badge-green hidden" id="cot-recommendation">Recommandé</span>
+            <span class="badge badge-green hidden" id="cot-recommendation">Recommande</span>
           </div>
         </div>
 
-        <!-- Output length -->
         <div class="form-group">
-          <label>Quelle longueur de réponse attendez-vous du LLM ?</label>
-          <p class="helper-text" style="margin-bottom: var(--space-sm); margin-top: 0;">Contrôle la taille de la réponse générée : "Court" = quelques phrases, "Moyen" = quelques paragraphes, "Long" = réponse détaillée, "Illimité" = aucune limite.</p>
+          <label>Quelle longueur de reponse attendez-vous du LLM ?</label>
+          <p class="helper-text" style="margin-bottom: var(--space-sm); margin-top: 0;">Controle la taille de la reponse generee : "Court" = quelques phrases, "Moyen" = quelques paragraphes, "Long" = reponse detaillee, "Illimite" = aucune limite.</p>
           <div class="radio-pills" id="length-group">
             <label class="pill"><input type="radio" name="output-length" value="court"><span>Court (1-3 phrases)</span></label>
             <label class="pill"><input type="radio" name="output-length" value="moyen" checked><span>Moyen (2-4 paragraphes)</span></label>
-            <label class="pill"><input type="radio" name="output-length" value="long"><span>Long (détaillé)</span></label>
-            <label class="pill"><input type="radio" name="output-length" value="illimite"><span>Illimité</span></label>
+            <label class="pill"><input type="radio" name="output-length" value="long"><span>Long (detaille)</span></label>
+            <label class="pill"><input type="radio" name="output-length" value="illimite"><span>Illimite</span></label>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- STEP 6: Smart Optimization Questions (NEW) -->
-    <section class="wizard-step" id="step-6" data-step="6">
+    <!-- ============================================ -->
+    <!-- SHARED: Smart Questions                      -->
+    <!-- ============================================ -->
+    <section class="wizard-step" id="step-shared-questions">
       <div class="step-card">
         <h2>Questions d'optimisation</h2>
-        <p class="step-description">L'IA analyse vos réponses et pose des questions pour affiner votre prompt.</p>
+        <p class="step-description">L'IA analyse vos reponses et pose des questions pour affiner votre prompt.</p>
 
         <div id="smart-questions-container">
           <div class="ai-status" id="questions-loading">
             <div class="spinner"></div>
-            <span>Analyse de vos réponses en cours...</span>
+            <span>Analyse de vos reponses en cours...</span>
           </div>
         </div>
 
@@ -462,25 +610,27 @@
 
         <div id="smart-questions-error" class="hidden">
           <div class="info-box info-box-warning">
-            <p>Impossible de générer les questions. Vérifiez votre clé API dans les paramètres.</p>
-            <button class="btn-secondary btn-sm" id="retry-questions" style="margin-top: var(--space-sm);">Réessayer</button>
+            <p>Impossible de generer les questions. Verifiez votre cle API dans les parametres.</p>
+            <button class="btn-secondary btn-sm" id="retry-questions" style="margin-top: var(--space-sm);">Reessayer</button>
           </div>
         </div>
 
         <div id="smart-questions-skip" class="hidden">
           <div class="info-box">
-            <p>Pour bénéficier des questions d'optimisation IA, configurez votre clé API dans les paramètres.</p>
+            <p>Pour beneficier des questions d'optimisation IA, configurez votre cle API dans les parametres. <a href="#" id="btn-skip-settings" style="color:var(--color-primary);text-decoration:underline;cursor:pointer">Configurer maintenant</a></p>
           </div>
         </div>
 
-        <p class="helper-text" style="margin-top: var(--space-lg);">Ces questions sont optionnelles. Vos réponses enrichiront le prompt final.</p>
+        <p class="helper-text" style="margin-top: var(--space-lg);">Ces questions sont optionnelles. Vos reponses enrichiront le prompt final.</p>
       </div>
     </section>
 
-    <!-- STEP 7: Preview & Refinement -->
-    <section class="wizard-step" id="step-7" data-step="7">
+    <!-- ============================================ -->
+    <!-- SHARED: Preview & Refinement                 -->
+    <!-- ============================================ -->
+    <section class="wizard-step" id="step-shared-preview">
       <div class="step-card step-card-wide">
-        <h2>Aperçu du prompt</h2>
+        <h2>Apercu du prompt</h2>
 
         <!-- LLM Tabs -->
         <div class="llm-tabs" id="llm-tabs"></div>
@@ -488,11 +638,11 @@
         <!-- Preview mode tabs -->
         <div class="preview-container">
           <div class="preview-toolbar">
-            <div class="toolbar-tabs">
+            <div class="toolbar-tabs" id="preview-toolbar-tabs">
               <button class="toolbar-tab active" id="btn-mode-split">System + User</button>
-              <button class="toolbar-tab" id="btn-mode-combined">Prompt combiné</button>
+              <button class="toolbar-tab" id="btn-mode-combined">Prompt combine</button>
               <span class="toolbar-separator">|</span>
-              <button class="toolbar-tab" id="btn-edit-mode">Éditer</button>
+              <button class="toolbar-tab" id="btn-edit-mode">Editer</button>
               <span class="toolbar-separator">|</span>
               <div class="format-select">
                 <button class="toolbar-tab" id="btn-format">Texte &#9662;</button>
@@ -520,7 +670,7 @@
             <div class="download-dropdown">
               <button class="btn-action btn-action-download" id="btn-download">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Télécharger
+                Telecharger
               </button>
               <div class="download-menu hidden" id="download-menu">
                 <button class="download-option" data-format="md">.md (Markdown)</button>
@@ -533,20 +683,29 @@
 
         <!-- Feedback zone -->
         <div class="feedback-bar">
-          <textarea id="preview-feedback" rows="2" placeholder="Pas satisfait ? Décrivez les modifications souhaitées..."></textarea>
+          <textarea id="preview-feedback" rows="2" placeholder="Pas satisfait ? Decrivez les modifications souhaitees..."></textarea>
           <button class="btn-action btn-action-regenerate" id="btn-apply-feedback">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
-            Régénérer
+            Regenerer
           </button>
         </div>
       </div>
     </section>
 
-    <!-- STEP 8: AI Optimization (side-by-side) -->
-    <section class="wizard-step" id="step-8" data-step="8">
+    <!-- ============================================ -->
+    <!-- SHARED: AI Optimization (side-by-side)       -->
+    <!-- ============================================ -->
+    <section class="wizard-step" id="step-shared-optimize">
       <div class="step-card step-card-wide">
         <h2>Optimisation IA</h2>
         <p class="step-description">Comparez votre prompt original avec la version optimisee par l'IA.</p>
+
+        <!-- API Key Warning Banner -->
+        <div class="api-key-banner hidden" id="api-key-banner">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          <span>Aucune cle API configuree. Configurez vos cles pour activer l'optimisation IA.</span>
+          <button class="btn-secondary btn-sm" id="btn-banner-settings">Configurer</button>
+        </div>
 
         <!-- LLM Tabs -->
         <div class="llm-tabs" id="llm-tabs-optimize"></div>
@@ -607,13 +766,13 @@
               </div>
             </div>
 
-            <!-- Notes et recommandations (dans le panneau droit) -->
+            <!-- Notes et recommandations -->
             <div class="comparison-notes hidden" id="optimize-notes">
               <h4>Notes et recommandations</h4>
               <div class="optimize-notes-content" id="optimize-notes-content"></div>
             </div>
 
-            <!-- Actions (dans le panneau droit) -->
+            <!-- Actions -->
             <div class="comparison-actions hidden" id="optimize-actions">
               <button class="btn-action btn-action-copy btn-sm" id="btn-copy-optimized">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
@@ -622,7 +781,7 @@
               <div class="download-dropdown">
                 <button class="btn-action btn-action-download btn-sm" id="btn-download-optimized">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                  Télécharger
+                  Telecharger
                 </button>
                 <div class="download-menu hidden" id="download-menu-optimized">
                   <button class="download-option" data-format="md" data-target="optimized">.md (Markdown)</button>
@@ -632,30 +791,53 @@
               </div>
             </div>
 
-            <!-- Feedback (dans le panneau droit) -->
+            <!-- Feedback -->
             <div class="comparison-feedback hidden" id="optimize-feedback-zone">
               <div class="feedback-bar feedback-bar-compact">
                 <textarea id="optimize-feedback" rows="2" placeholder="Pas satisfait ? Decrivez les modifications..."></textarea>
                 <button class="btn-action btn-action-regenerate btn-sm" id="btn-regenerate">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
-                  Régénérer
+                  Regenerer
                 </button>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Bouton lancer + loading (commun, en bas) -->
-        <div class="action-bar" style="margin-top: var(--space-lg);">
-          <button class="btn-primary btn-with-icon" id="btn-optimize" disabled>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-            Lancer l'optimisation IA
-          </button>
+        <!-- Bouton optimisation contextuel -->
+        <div class="optimize-actions-bar">
+          <div class="optimize-btn-wrapper">
+            <button class="btn-primary btn-with-icon" id="btn-optimize" disabled>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+              <span id="btn-optimize-label">Optimiser le prompt</span>
+            </button>
+            <button class="btn-optimize-dropdown hidden" id="btn-optimize-dropdown" disabled>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="optimize-menu hidden" id="optimize-menu">
+              <button class="optimize-menu-option" id="opt-single" data-action="single">
+                <span class="opt-icon">1</span>
+                <span class="opt-text">
+                  <strong id="opt-single-label">Optimiser "Claude"</strong>
+                  <small>Uniquement le modele actif</small>
+                </span>
+              </button>
+              <button class="optimize-menu-option" id="opt-all" data-action="all">
+                <span class="opt-icon">&#8704;</span>
+                <span class="opt-text">
+                  <strong id="opt-all-label">Optimiser les 3 modeles</strong>
+                  <small>Chaque modele un par un</small>
+                </span>
+              </button>
+            </div>
+          </div>
         </div>
 
         <div class="ai-status hidden" id="ai-status">
-          <div class="spinner"></div>
-          <span>Optimisation en cours...</span>
+          <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="progress-bar-fill"></div>
+          </div>
+          <span id="ai-status-text">Optimisation en cours...</span>
         </div>
       </div>
     </section>
@@ -664,7 +846,7 @@
 
   <!-- NAVIGATION -->
   <nav class="wizard-nav" id="wizard-nav">
-    <button class="btn-secondary" id="btn-prev" disabled>Précédent</button>
+    <button class="btn-secondary" id="btn-prev" disabled>Precedent</button>
     <button class="btn-primary" id="btn-next">Suivant</button>
   </nav>
 
@@ -672,34 +854,34 @@
   <div class="modal-overlay hidden" id="settings-modal">
     <div class="modal">
       <div class="modal-header">
-        <h3>Paramètres</h3>
+        <h3>Parametres</h3>
         <button class="btn-close" id="btn-close-settings">&times;</button>
       </div>
       <div class="modal-body">
         <div class="form-group">
-          <label for="api-key">Clé API Anthropic (principale)</label>
+          <label for="api-key">Cle API Anthropic (principale)</label>
           <div class="input-row">
             <input type="password" id="api-key" placeholder="sk-ant-api03-...">
             <button class="btn-secondary btn-sm" id="toggle-key-visibility">Afficher</button>
           </div>
-          <p class="helper-text">Clé principale pour les questions d'optimisation et le raffinement IA.</p>
+          <p class="helper-text">Cle principale pour les questions d'optimisation et le raffinement IA.</p>
         </div>
         <div class="form-group">
-          <label for="openai-key">Clé API OpenAI (secours)</label>
+          <label for="openai-key">Cle API OpenAI (secours)</label>
           <div class="input-row">
             <input type="password" id="openai-key" placeholder="sk-proj-...">
             <button class="btn-secondary btn-sm" id="toggle-openai-visibility">Afficher</button>
           </div>
-          <p class="helper-text">Optionnel. Utilisée automatiquement si Anthropic est indisponible (overloaded, erreur serveur).</p>
+          <p class="helper-text">Optionnel. Utilisee automatiquement si Anthropic est indisponible (overloaded, erreur serveur).</p>
         </div>
         <div class="form-group">
-          <button class="btn-secondary btn-sm" id="btn-save-key">Sauvegarder les clés</button>
+          <button class="btn-secondary btn-sm" id="btn-save-key">Sauvegarder les cles</button>
         </div>
-        <p class="helper-text">Vos clés sont stockées uniquement dans votre navigateur. Elles ne sont jamais enregistrées sur nos serveurs.</p>
+        <p class="helper-text">Vos cles sont stockees uniquement dans votre navigateur. Elles ne sont jamais enregistrees sur nos serveurs.</p>
         <hr>
         <div class="form-group">
-          <label>Données locales</label>
-          <button class="btn-danger btn-sm" id="btn-clear-history">Effacer toutes les données</button>
+          <label>Donnees locales</label>
+          <button class="btn-danger btn-sm" id="btn-clear-history">Effacer toutes les donnees</button>
         </div>
       </div>
     </div>

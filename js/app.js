@@ -1,12 +1,18 @@
 /**
  * Main Application Controller
- * Manages wizard navigation (8 steps), form state, localStorage, events
+ * Manages wizard navigation, form state, localStorage, events
+ * Supports two modes: 'prompt' (7 steps) and 'agent' (6 steps)
  */
 const App = {
 
   currentStep: 1,
-  totalSteps: 8,
   maxStepReached: 1,
+  mode: 'prompt', // 'prompt' | 'agent'
+  agentPlatform: null, // 'claude' | 'chatgpt' | 'gemini'
+  stepSequences: {
+    prompt: ['step-prompt-1', 'step-prompt-2', 'step-prompt-3', 'step-prompt-4', 'step-shared-questions', 'step-shared-preview', 'step-shared-optimize'],
+    agent: ['step-agent-1', 'step-agent-2', 'step-agent-3', 'step-shared-questions', 'step-shared-preview', 'step-shared-optimize']
+  },
   generatedPrompts: {},
   originalPrompts: {},
   activeLLMTab: null,
@@ -20,9 +26,17 @@ const App = {
   tutorialActive: false,
   tutorialStepIndex: 0,
 
+  // Dynamic step helpers
+  _getStepSequence() { return this.stepSequences[this.mode]; },
+  _getTotalSteps() { return this._getStepSequence().length; },
+  _getCurrentStepId() { return this._getStepSequence()[this.currentStep - 1]; },
+
   // ===== INITIALIZATION =====
 
+  _autoSaveTimer: null,
+
   init() {
+    this._initDarkMode();
     this.loadPreferences();
     this.renderStepIndicators();
     this.renderLLMCards();
@@ -30,11 +44,14 @@ const App = {
     this.renderVideoModelCards();
     this.renderVibeModelCards();
     this.renderTaskCards();
+    this.renderAgentPlatformCards();
     this._initMultiSelects();
     this.bindEvents();
     this.updateNavigation();
     this.checkApiKey();
     this._updateGuideHighlights();
+    this._restoreAutoSave();
+    this._bindAutoSave();
   },
 
   // ===== STEP INDICATORS =====
@@ -42,12 +59,12 @@ const App = {
   renderStepIndicators() {
     const container = document.getElementById('step-indicators');
     container.innerHTML = '';
-    for (let i = 1; i <= this.totalSteps; i++) {
+    const total = this._getTotalSteps();
+    for (let i = 1; i <= total; i++) {
       const dot = document.createElement('div');
       dot.className = 'step-dot' + (i === 1 ? ' active' : '');
       dot.textContent = i;
       dot.dataset.step = i;
-      // Allow clicking on any visited step (forward & backward)
       dot.addEventListener('click', () => {
         const targetStep = parseInt(dot.dataset.step);
         if (targetStep !== this.currentStep && targetStep <= this.maxStepReached) {
@@ -65,22 +82,39 @@ const App = {
       if (step === this.currentStep) dot.classList.add('active');
       else if (step <= this.maxStepReached) dot.classList.add('completed');
     });
-    const pct = (this.currentStep / this.totalSteps) * 100;
+    const pct = (this.currentStep / this._getTotalSteps()) * 100;
     document.getElementById('progress-fill').style.width = pct + '%';
   },
 
   // ===== NAVIGATION =====
 
-  nextStep() {
+  async nextStep() {
     if (!this.validateCurrentStep()) return;
-    if (this.currentStep < this.totalSteps) {
+    if (this.currentStep < this._getTotalSteps()) {
+      const currentId = this._getCurrentStepId();
+
+      // Pre-navigation hooks
+      if (currentId === 'step-prompt-1') {
+        const freeText = document.getElementById('free-description').value.trim();
+        if (freeText && this._hasApiKey) {
+          await this.extractFromFreeText(freeText);
+        }
+      }
+      if (currentId === 'step-agent-2') {
+        await this.extractAgentFields();
+      }
+
       this.currentStep++;
       this.maxStepReached = Math.max(this.maxStepReached, this.currentStep);
       this.showStep(this.currentStep);
-      if (this.currentStep === 4) this.updateStep4Fields();
-      if (this.currentStep === 6) this.triggerSmartQuestions();
-      if (this.currentStep === 7) this.generatePreview();
-      if (this.currentStep === 8) this.prepareOptimizationStep();
+
+      // Post-navigation hooks
+      const newId = this._getCurrentStepId();
+      if (newId === 'step-prompt-3') this.updateStep4Fields();
+      if (newId === 'step-shared-questions') this.triggerSmartQuestions();
+      if (newId === 'step-shared-preview') this.generatePreview();
+      if (newId === 'step-shared-optimize') this.prepareOptimizationStep();
+      if (newId === 'step-agent-3') this.showAgentFieldsForPlatform();
     }
   },
 
@@ -88,7 +122,8 @@ const App = {
     if (this.currentStep > 1) {
       this.currentStep--;
       this.showStep(this.currentStep);
-      if (this.currentStep === 4) this.updateStep4Fields();
+      const newId = this._getCurrentStepId();
+      if (newId === 'step-prompt-3') this.updateStep4Fields();
     }
   },
 
@@ -96,20 +131,23 @@ const App = {
     if (stepNumber >= 1 && stepNumber <= this.maxStepReached) {
       this.currentStep = stepNumber;
       this.showStep(stepNumber);
-      if (stepNumber === 4) this.updateStep4Fields();
-      if (stepNumber === 6 && !this.smartQuestionsGenerated) this.triggerSmartQuestions();
-      if (stepNumber === 7) this.generatePreview();
-      if (stepNumber === 8) this.prepareOptimizationStep();
+      const stepId = this._getCurrentStepId();
+      if (stepId === 'step-prompt-3') this.updateStep4Fields();
+      if (stepId === 'step-shared-questions' && !this.smartQuestionsGenerated) this.triggerSmartQuestions();
+      if (stepId === 'step-shared-preview') this.generatePreview();
+      if (stepId === 'step-shared-optimize') this.prepareOptimizationStep();
+      if (stepId === 'step-agent-3') this.showAgentFieldsForPlatform();
     }
   },
 
   showStep(stepNumber) {
     document.querySelectorAll('.wizard-step').forEach(s => s.classList.remove('active'));
-    const target = document.getElementById('step-' + stepNumber);
+    const stepId = this._getStepSequence()[stepNumber - 1];
+    const target = document.getElementById(stepId);
     if (target) target.classList.add('active');
-    // Wide mode for steps needing extra width (1, 7, 8)
     const container = document.getElementById('wizard-container');
-    if (container) container.classList.toggle('wide-mode', stepNumber === 1 || stepNumber >= 7);
+    const wideSteps = ['step-prompt-1', 'step-agent-1', 'step-shared-preview', 'step-shared-optimize'];
+    if (container) container.classList.toggle('wide-mode', wideSteps.includes(stepId));
     this.updateStepIndicators();
     this.updateNavigation();
     this._updateGuideHighlights();
@@ -123,7 +161,7 @@ const App = {
 
     btnPrev.disabled = this.currentStep === 1;
 
-    if (this.currentStep === this.totalSteps) {
+    if (this.currentStep === this._getTotalSteps()) {
       btnNext.classList.add('hidden');
       btnPrev.classList.remove('hidden');
     } else {
@@ -163,17 +201,15 @@ const App = {
 
   validateCurrentStep() {
     this._hideAllErrors();
+    const stepId = this._getCurrentStepId();
 
-    switch (this.currentStep) {
-      case 1: {
+    switch (stepId) {
+      case 'step-prompt-1': {
         const models = document.querySelectorAll('.llm-card.selected');
         if (models.length === 0) {
           this._showError('error-step1');
           return false;
         }
-        return true;
-      }
-      case 2: {
         const task = document.querySelector('.task-card.selected');
         if (!task) {
           this._showError('error-step2');
@@ -185,9 +221,32 @@ const App = {
         }
         return true;
       }
-      case 3:
+      case 'step-agent-1': {
+        if (!document.querySelector('.agent-platform-card.selected')) {
+          this._showError('error-agent-1');
+          return false;
+        }
         return true;
-      case 4: {
+      }
+      case 'step-agent-2': {
+        if (!document.getElementById('agent-description').value.trim()) {
+          this._showError('error-agent-2');
+          return false;
+        }
+        return true;
+      }
+      case 'step-agent-3': {
+        const p = this.agentPlatform;
+        const instrId = p === 'claude' ? 'agent-claude-instructions' : p === 'chatgpt' ? 'agent-chatgpt-instructions' : 'agent-gemini-instructions';
+        if (!document.getElementById(instrId).value.trim()) {
+          this._showError('error-agent-3');
+          return false;
+        }
+        return true;
+      }
+      case 'step-prompt-2':
+        return true;
+      case 'step-prompt-3': {
         const selected = this._getSelectedModels();
         const hasText = PromptBuilder.hasTextModel(selected);
         const hasVibe = PromptBuilder.hasVibeModel(selected);
@@ -281,17 +340,19 @@ const App = {
     const card = document.createElement('div');
     card.className = 'llm-card';
     card.dataset.llm = key;
+    const initial = cfg.name.charAt(0).toUpperCase();
     card.innerHTML = `
-      <div class="llm-icon-img"><img src="${cfg.icon}" alt="${cfg.name}" loading="lazy"></div>
+      <div class="llm-icon-img"><img src="${cfg.icon}" alt="${cfg.name}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="llm-icon-fallback" style="display:none">${initial}</span></div>
       <div class="llm-info">
         <h3>${cfg.name}</h3>
         <p>${cfg.description}</p>
       </div>
     `;
-    card.addEventListener('click', () => {
-      card.classList.toggle('selected');
-      this._hideAllErrors();
-    });
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('role', 'option');
+    const toggleCard = () => { card.classList.toggle('selected'); this._hideAllErrors(); };
+    card.addEventListener('click', toggleCard);
+    card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCard(); } });
     return card;
   },
 
@@ -327,7 +388,9 @@ const App = {
         ? `<img class="task-icon-img" src="${t.icon}" alt="${t.label}" loading="lazy">`
         : `<span class="task-icon">${t.icon}</span>`;
       card.innerHTML = `${iconHtml} ${t.label}`;
-      card.addEventListener('click', () => {
+      card.setAttribute('tabindex', '0');
+      card.setAttribute('role', 'option');
+      const selectTask = () => {
         document.querySelectorAll('.task-card').forEach(c => c.classList.remove('selected'));
         card.classList.add('selected');
         this._hideAllErrors();
@@ -336,7 +399,9 @@ const App = {
         customDiv.classList.toggle('hidden', t.key !== 'autre');
 
         this.updateCoTRecommendation(t.key);
-      });
+      };
+      card.addEventListener('click', selectTask);
+      card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectTask(); } });
       grid.appendChild(card);
     });
   },
@@ -387,6 +452,328 @@ const App = {
     badge.classList.toggle('hidden', count === 0);
   },
 
+  // ===== MODE TOGGLE & AGENT UI =====
+
+  setMode(newMode) {
+    if (newMode === this.mode) return;
+    this.mode = newMode;
+    this.currentStep = 1;
+    this.maxStepReached = 1;
+    this.smartQuestionsGenerated = false;
+    this.generatedPrompts = {};
+    this.originalPrompts = {};
+    this.agentPlatform = null;
+
+    // Update all mode toggle buttons across both first steps
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === newMode);
+    });
+
+    // Re-render step indicators for new mode
+    this.renderStepIndicators();
+    this.showStep(1);
+  },
+
+  renderAgentPlatformCards() {
+    const grid = document.getElementById('agent-platform-grid');
+    if (!grid) return;
+
+    const platforms = [
+      { key: 'claude', name: 'Projet', type: 'Claude', logo: 'img/logos/claude.png', desc: 'Sur quoi travaillez-vous, instructions' },
+      { key: 'chatgpt', name: 'GPT', type: 'ChatGPT', logo: 'img/logos/chatgpt.png', desc: 'Nom, description, instructions, amorces' },
+      { key: 'gemini', name: 'Gem', type: 'Gemini', logo: 'img/logos/gemini.png', desc: 'Nom, description, instructions' }
+    ];
+
+    grid.innerHTML = platforms.map(p => `
+      <div class="agent-platform-card" data-platform="${p.key}">
+        <img class="platform-logo" src="${p.logo}" alt="${p.type}">
+        <span class="platform-name">${p.name}</span>
+        <span class="platform-type">${p.type}</span>
+        <span class="platform-desc">${p.desc}</span>
+      </div>
+    `).join('');
+
+    // Single select: click selects one, deselects others
+    grid.querySelectorAll('.agent-platform-card').forEach(card => {
+      card.addEventListener('click', () => {
+        grid.querySelectorAll('.agent-platform-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        this.agentPlatform = card.dataset.platform;
+      });
+    });
+  },
+
+  showAgentFieldsForPlatform() {
+    const blocks = ['agent-fields-claude', 'agent-fields-chatgpt', 'agent-fields-gemini'];
+    blocks.forEach(id => document.getElementById(id)?.classList.add('hidden'));
+
+    const platformMap = { claude: 'agent-fields-claude', chatgpt: 'agent-fields-chatgpt', gemini: 'agent-fields-gemini' };
+    const target = platformMap[this.agentPlatform];
+    if (target) document.getElementById(target)?.classList.remove('hidden');
+
+    // Update title
+    const titles = { claude: 'Configuration de votre Projet Claude', chatgpt: 'Configuration de votre GPT', gemini: 'Configuration de votre Gem Gemini' };
+    const titleEl = document.getElementById('agent-fields-title');
+    if (titleEl && titles[this.agentPlatform]) titleEl.textContent = titles[this.agentPlatform];
+
+    // Render default starters for ChatGPT if empty
+    if (this.agentPlatform === 'chatgpt') {
+      const container = document.getElementById('agent-chatgpt-starters');
+      if (container && container.children.length === 0) {
+        this._renderConversationStarters(['', '', '', '']);
+      }
+    }
+  },
+
+  _renderConversationStarters(starters) {
+    const container = document.getElementById('agent-chatgpt-starters');
+    if (!container) return;
+    container.innerHTML = '';
+    starters.forEach((text, i) => {
+      const row = document.createElement('div');
+      row.className = 'starter-input-row';
+      row.innerHTML = `
+        <input type="text" class="starter-input" placeholder="Amorce ${i + 1}..." value="${this._escapeHTML(text)}">
+        <button class="btn-remove-starter" title="Supprimer">&times;</button>
+      `;
+      row.querySelector('.btn-remove-starter').addEventListener('click', () => {
+        row.remove();
+      });
+      container.appendChild(row);
+    });
+  },
+
+  _collectConversationStarters() {
+    const inputs = document.querySelectorAll('#agent-chatgpt-starters .starter-input');
+    return Array.from(inputs).map(inp => inp.value.trim()).filter(v => v);
+  },
+
+  _addConversationStarter() {
+    const container = document.getElementById('agent-chatgpt-starters');
+    if (!container) return;
+    const count = container.children.length;
+    const row = document.createElement('div');
+    row.className = 'starter-input-row';
+    row.innerHTML = `
+      <input type="text" class="starter-input" placeholder="Amorce ${count + 1}...">
+      <button class="btn-remove-starter" title="Supprimer">&times;</button>
+    `;
+    row.querySelector('.btn-remove-starter').addEventListener('click', () => {
+      row.remove();
+    });
+    container.appendChild(row);
+    row.querySelector('.starter-input').focus();
+  },
+
+  _escapeHTML(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  },
+
+  // ===== AGENT EXTRACTION (Step agent-2 → pre-fill agent-3) =====
+
+  async extractAgentFields() {
+    const apiKey = localStorage.getItem('pf_api_key');
+    const openaiKey = localStorage.getItem('pf_openai_key');
+    if (!apiKey && !openaiKey) return;
+
+    const description = document.getElementById('agent-description').value.trim();
+    if (!description) return;
+
+    const status = document.getElementById('agent-extract-status');
+    const statusText = document.getElementById('agent-extract-status-text');
+    status.classList.remove('hidden', 'success', 'error');
+    statusText.textContent = 'Analyse en cours...';
+
+    try {
+      const response = await fetch('/api/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          freeText: description,
+          mode: 'agent',
+          platform: this.agentPlatform,
+          apiKey,
+          openaiKey
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erreur d\'analyse');
+      }
+
+      const result = await response.json();
+      if (result.extracted) {
+        this._prefillAgentFields(result.extracted);
+        status.classList.add('success');
+        statusText.textContent = 'Champs pre-remplis avec succes';
+        const provider = result.fallback ? `${result.provider} (secours)` : result.provider;
+        UIHelpers.showToast(
+          `Analyse via ${provider} (${result.inputTokens} in / ${result.outputTokens} out)`,
+          'info', 3000
+        );
+      } else {
+        status.classList.add('error');
+        statusText.textContent = 'Analyse impossible - remplissez manuellement';
+      }
+    } catch (error) {
+      status.classList.add('error');
+      statusText.textContent = 'Erreur - remplissez manuellement';
+      console.error('Agent extract error:', error.message);
+    }
+  },
+
+  _prefillAgentFields(data) {
+    if (!data) return;
+    const p = this.agentPlatform;
+
+    if (p === 'claude') {
+      if (data.workingOn) document.getElementById('agent-claude-working-on').value = data.workingOn;
+      if (data.tryingToDo) document.getElementById('agent-claude-trying-to').value = data.tryingToDo;
+      if (data.instructions) document.getElementById('agent-claude-instructions').value = data.instructions;
+    } else if (p === 'chatgpt') {
+      if (data.name) document.getElementById('agent-chatgpt-name').value = data.name;
+      if (data.description) document.getElementById('agent-chatgpt-description').value = data.description;
+      if (data.instructions) document.getElementById('agent-chatgpt-instructions').value = data.instructions;
+      if (data.conversationStarters && data.conversationStarters.length > 0) {
+        this._renderConversationStarters(data.conversationStarters);
+      }
+    } else if (p === 'gemini') {
+      if (data.name) document.getElementById('agent-gemini-name').value = data.name;
+      if (data.description) document.getElementById('agent-gemini-description').value = data.description;
+      if (data.instructions) document.getElementById('agent-gemini-instructions').value = data.instructions;
+    }
+  },
+
+  // ===== FREE TEXT EXTRACTION (Step 2 → pre-fill Steps 3-5) =====
+
+  async extractFromFreeText(freeText) {
+    const apiKey = localStorage.getItem('pf_api_key');
+    const openaiKey = localStorage.getItem('pf_openai_key');
+    if (!apiKey && !openaiKey) return;
+
+    const status = document.getElementById('extract-status');
+    const statusText = document.getElementById('extract-status-text');
+    status.classList.remove('hidden', 'success', 'error');
+    statusText.textContent = 'Analyse en cours...';
+
+    const taskCard = document.querySelector('.task-card.selected');
+    const taskType = taskCard ? taskCard.dataset.task : '';
+    const models = Array.from(document.querySelectorAll('.llm-card.selected')).map(c => c.dataset.llm);
+
+    try {
+      const response = await fetch('/api/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ freeText, taskType, models, apiKey, openaiKey })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erreur d\'analyse');
+      }
+
+      const result = await response.json();
+      if (result.extracted) {
+        this._prefillFromExtracted(result.extracted);
+        status.classList.add('success');
+        statusText.textContent = 'Champs pre-remplis avec succes';
+        const provider = result.fallback ? `${result.provider} (secours)` : result.provider;
+        UIHelpers.showToast(
+          `Analyse via ${provider} (${result.inputTokens} in / ${result.outputTokens} out)`,
+          'info', 3000
+        );
+      } else {
+        status.classList.add('error');
+        statusText.textContent = 'Analyse impossible - continuez manuellement';
+      }
+    } catch (error) {
+      status.classList.add('error');
+      statusText.textContent = 'Erreur - continuez manuellement';
+      console.error('Extract error:', error.message);
+    }
+
+    // Store free text for smart questions anti-duplication
+    this._freeTextData = freeText;
+  },
+
+  _prefillFromExtracted(data) {
+    if (!data) return;
+    let filled = 0;
+
+    // Step 2 - Persona
+    if (data.persona && !document.getElementById('persona').value.trim()) {
+      document.getElementById('persona').value = data.persona;
+      filled++;
+    }
+
+    // Step 3 - Multi-selects
+    if (data.domain) filled += this._prefillMultiSelect('ms-domain', data.domain);
+    if (data.audience) filled += this._prefillMultiSelect('ms-audience', data.audience);
+    if (data.tone) filled += this._prefillMultiSelect('ms-tone', data.tone);
+    if (data.outputLanguage) filled += this._prefillMultiSelect('ms-output-language', data.outputLanguage);
+
+    // Step 4 - Text fields
+    if (data.taskDescription && !document.getElementById('task-description').value.trim()) {
+      document.getElementById('task-description').value = data.taskDescription;
+      filled++;
+    }
+    if (data.inputDescription && !document.getElementById('input-description').value.trim()) {
+      document.getElementById('input-description').value = data.inputDescription;
+      filled++;
+    }
+    if (data.outputFormat) {
+      const select = document.getElementById('output-format');
+      if (select) {
+        const option = select.querySelector(`option[value="${data.outputFormat}"]`);
+        if (option) { select.value = data.outputFormat; filled++; }
+      }
+    }
+    if (data.constraints && !document.getElementById('constraints').value.trim()) {
+      document.getElementById('constraints').value = data.constraints;
+      filled++;
+    }
+
+    // Step 5 - Complexity
+    if (data.complexity) {
+      const radio = document.querySelector(`input[name="complexity"][value="${data.complexity}"]`);
+      if (radio) { radio.checked = true; filled++; }
+    }
+
+    if (filled > 0) {
+      UIHelpers.showToast(`${filled} champ(s) pre-rempli(s)`, 'success', 2000);
+    }
+  },
+
+  _prefillMultiSelect(msId, value) {
+    const ms = document.getElementById(msId);
+    if (!ms || !ms._options || !ms._selected) return 0;
+
+    // Don't overwrite if already has selections
+    if (ms._selected.length > 0) return 0;
+
+    // Try to find matching option by value or label (case-insensitive)
+    const valueLower = value.toLowerCase();
+    const match = ms._options.find(opt =>
+      opt.value.toLowerCase() === valueLower ||
+      opt.label.toLowerCase() === valueLower ||
+      opt.label.toLowerCase().includes(valueLower) ||
+      valueLower.includes(opt.value.toLowerCase())
+    );
+
+    if (match) {
+      this._toggleMultiOption(ms, match.value, match.label);
+      return 1;
+    }
+
+    // No match: add as custom value
+    const customValue = 'custom-' + valueLower.replace(/\s+/g, '-');
+    this._toggleMultiOption(ms, customValue, value);
+    return 1;
+  },
+
   // ===== SMART QUESTIONS (Step 6) =====
 
   triggerSmartQuestions() {
@@ -418,7 +805,17 @@ const App = {
     skipDiv.classList.add('hidden');
     listDiv.classList.add('hidden');
 
-    const formData = PromptBuilder.collectFormData();
+    let formData;
+    if (this.mode === 'agent') {
+      const agentData = this.collectAgentData();
+      formData = {
+        mode: 'agent',
+        agentData,
+        agentDescription: document.getElementById('agent-description')?.value?.trim() || ''
+      };
+    } else {
+      formData = PromptBuilder.collectFormData();
+    }
 
     try {
       const response = await fetch('/api/questions', {
@@ -521,13 +918,144 @@ const App = {
     return answers;
   },
 
+  // ===== AGENT DATA COLLECTION & PREVIEW =====
+
+  collectAgentData() {
+    const p = this.agentPlatform;
+    const base = { platform: p };
+
+    if (p === 'claude') {
+      return {
+        ...base,
+        workingOn: document.getElementById('agent-claude-working-on').value.trim(),
+        tryingToDo: document.getElementById('agent-claude-trying-to').value.trim(),
+        instructions: document.getElementById('agent-claude-instructions').value.trim()
+      };
+    } else if (p === 'chatgpt') {
+      return {
+        ...base,
+        name: document.getElementById('agent-chatgpt-name').value.trim(),
+        description: document.getElementById('agent-chatgpt-description').value.trim(),
+        instructions: document.getElementById('agent-chatgpt-instructions').value.trim(),
+        conversationStarters: this._collectConversationStarters()
+      };
+    } else if (p === 'gemini') {
+      return {
+        ...base,
+        name: document.getElementById('agent-gemini-name').value.trim(),
+        description: document.getElementById('agent-gemini-description').value.trim(),
+        instructions: document.getElementById('agent-gemini-instructions').value.trim()
+      };
+    }
+    return base;
+  },
+
+  _agentDataToText(data) {
+    if (!data) return '';
+    const lines = [];
+    const platformNames = { claude: 'Projet Claude', chatgpt: 'GPT ChatGPT', gemini: 'Gem Gemini' };
+    lines.push(`Plateforme : ${platformNames[data.platform] || data.platform}`);
+    lines.push('');
+
+    if (data.platform === 'claude') {
+      if (data.workingOn) lines.push(`Sur quoi travaillez-vous ?\n${data.workingOn}\n`);
+      if (data.tryingToDo) lines.push(`Qu'essayez-vous de faire ?\n${data.tryingToDo}\n`);
+      if (data.instructions) lines.push(`Instructions :\n${data.instructions}`);
+    } else if (data.platform === 'chatgpt') {
+      if (data.name) lines.push(`Nom : ${data.name}\n`);
+      if (data.description) lines.push(`Description : ${data.description}\n`);
+      if (data.instructions) lines.push(`Instructions :\n${data.instructions}\n`);
+      if (data.conversationStarters && data.conversationStarters.length > 0) {
+        lines.push(`Amorces de conversation :`);
+        data.conversationStarters.forEach((s, i) => lines.push(`  ${i + 1}. ${s}`));
+      }
+    } else if (data.platform === 'gemini') {
+      if (data.name) lines.push(`Nom : ${data.name}\n`);
+      if (data.description) lines.push(`Description : ${data.description}\n`);
+      if (data.instructions) lines.push(`Instructions :\n${data.instructions}`);
+    }
+
+    return lines.join('\n');
+  },
+
+  _renderAgentField(label, value) {
+    if (!value) return '';
+    return `<div class="agent-preview-card">
+      <h4>${label}</h4>
+      <div class="field-content">${this._escapeHTML(value).replace(/\n/g, '<br>')}</div>
+    </div>`;
+  },
+
+  renderAgentPreview(data) {
+    const preview = document.getElementById('prompt-preview');
+    const editor = document.getElementById('prompt-editor');
+
+    // Hide prompt-specific toolbar (tabs, split/combined, format, edit)
+    document.getElementById('llm-tabs')?.classList.add('hidden');
+    const toolbar = document.getElementById('preview-toolbar-tabs');
+    if (toolbar) toolbar.classList.add('hidden');
+
+    let html = '';
+    const platformNames = { claude: 'Projet Claude', chatgpt: 'GPT ChatGPT', gemini: 'Gem Gemini' };
+
+    html += `<div class="agent-preview-header" style="margin-bottom:var(--space-md);">
+      <h3 style="margin:0;">${platformNames[data.platform] || data.platform}</h3>
+    </div>`;
+
+    if (data.platform === 'claude') {
+      html += this._renderAgentField('Sur quoi travaillez-vous ?', data.workingOn);
+      html += this._renderAgentField("Qu'essayez-vous de faire ?", data.tryingToDo);
+      html += this._renderAgentField('Instructions', data.instructions);
+    } else if (data.platform === 'chatgpt') {
+      html += this._renderAgentField('Nom', data.name);
+      html += this._renderAgentField('Description', data.description);
+      html += this._renderAgentField('Instructions', data.instructions);
+      if (data.conversationStarters && data.conversationStarters.length > 0) {
+        html += `<div class="agent-preview-card">
+          <h4>Amorces de conversation</h4>
+          <ul class="agent-starters-list">
+            ${data.conversationStarters.map(s => `<li class="agent-starter-item">${this._escapeHTML(s)}</li>`).join('')}
+          </ul>
+        </div>`;
+      }
+    } else if (data.platform === 'gemini') {
+      html += this._renderAgentField('Nom', data.name);
+      html += this._renderAgentField('Description', data.description);
+      html += this._renderAgentField('Instructions', data.instructions);
+    }
+
+    preview.innerHTML = html;
+    preview.classList.remove('hidden');
+    editor.classList.add('hidden');
+
+    // Store text version for copy/download
+    const textVersion = this._agentDataToText(data);
+    editor.value = textVersion;
+
+    // Token count
+    const tokens = UIHelpers.estimateTokens(textVersion);
+    document.getElementById('token-counter').textContent = `~${tokens} tokens`;
+
+    // Store agent data for optimization step
+    this._currentAgentData = data;
+  },
+
   // ===== PREVIEW & GENERATION (Step 7) =====
 
   generatePreview() {
+    if (this.mode === 'agent') {
+      const agentData = this.collectAgentData();
+      this.renderAgentPreview(agentData);
+      return;
+    }
     const formData = PromptBuilder.collectFormData();
     this.generatedPrompts = PromptBuilder.generateAll(formData);
     // Save a copy as originals for comparison in step 8
     this.originalPrompts = JSON.parse(JSON.stringify(this.generatedPrompts));
+    // Show prompt-specific toolbar
+    document.getElementById('llm-tabs')?.classList.remove('hidden');
+    const toolbar = document.getElementById('preview-toolbar-tabs');
+    if (toolbar) toolbar.classList.remove('hidden');
     this.renderLLMTabs();
     const firstModel = formData.targetLLMs[0];
     this.showPromptForLLM(firstModel);
@@ -557,10 +1085,19 @@ const App = {
     });
 
     const adapted = this.generatedPrompts[llmKey];
-    const markdown = LLMAdapters.renderPreview(adapted, llmKey, this.previewMode);
+    const preview = document.getElementById('prompt-preview');
 
-    document.getElementById('prompt-editor').value = markdown;
-    this._renderWithFormat(document.getElementById('prompt-preview'), markdown, this.displayFormat);
+    if (this.previewMode === 'split' && adapted.systemPrompt && adapted.userPrompt) {
+      // Split view: two separate panels
+      const combinedMarkdown = LLMAdapters.renderPreview(adapted, llmKey, 'combined');
+      document.getElementById('prompt-editor').value = combinedMarkdown;
+      this._renderSplitView(preview, adapted.systemPrompt, adapted.userPrompt, this.displayFormat);
+    } else {
+      // Combined view: single block
+      const markdown = LLMAdapters.renderPreview(adapted, llmKey, 'combined');
+      document.getElementById('prompt-editor').value = markdown;
+      this._renderWithFormat(preview, markdown, this.displayFormat);
+    }
 
     const rawText = LLMAdapters.getRawPrompt(adapted);
     const tokens = UIHelpers.estimateTokens(rawText);
@@ -594,7 +1131,14 @@ const App = {
       editor.classList.add('hidden');
       preview.classList.remove('hidden');
       btnEdit.classList.remove('active');
-      this._renderWithFormat(preview, editor.value, this.displayFormat);
+      // Re-render respecting current mode (split vs combined)
+      const llmKey = this.activeLLMTab;
+      const adapted = llmKey ? this.generatedPrompts[llmKey] : null;
+      if (this.previewMode === 'split' && adapted && adapted.systemPrompt && adapted.userPrompt) {
+        this._renderSplitView(preview, adapted.systemPrompt, adapted.userPrompt, this.displayFormat);
+      } else {
+        this._renderWithFormat(preview, editor.value, this.displayFormat);
+      }
     }
   },
 
@@ -613,22 +1157,111 @@ const App = {
 
     // Re-render if not in edit mode
     if (!this.editMode && this.activeLLMTab) {
-      const editor = document.getElementById('prompt-editor');
-      const preview = document.getElementById('prompt-preview');
-      this._renderWithFormat(preview, editor.value, format);
+      // Re-trigger full render to handle split vs combined
+      this.showPromptForLLM(this.activeLLMTab);
     }
+  },
+
+  _renderSplitView(container, systemPrompt, userPrompt, format) {
+    const copyIcon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>';
+    container.style.whiteSpace = '';
+
+    // Build DOM elements directly to avoid querySelector issues
+    const wrapper = document.createElement('div');
+    wrapper.className = 'split-view';
+
+    const systemPane = document.createElement('div');
+    systemPane.className = 'split-pane';
+    systemPane.innerHTML = `<div class="split-pane-header"><span class="pane-icon system-icon">S</span>System Prompt<button class="btn-copy-pane" data-target="system">${copyIcon} Copier</button></div>`;
+    const systemBody = document.createElement('div');
+    systemBody.className = 'split-pane-body';
+    systemPane.appendChild(systemBody);
+
+    const userPane = document.createElement('div');
+    userPane.className = 'split-pane';
+    userPane.innerHTML = `<div class="split-pane-header"><span class="pane-icon user-icon">U</span>User Prompt<button class="btn-copy-pane" data-target="user">${copyIcon} Copier</button></div>`;
+    const userBody = document.createElement('div');
+    userBody.className = 'split-pane-body';
+    userPane.appendChild(userBody);
+
+    wrapper.appendChild(systemPane);
+    wrapper.appendChild(userPane);
+
+    container.innerHTML = '';
+    container.appendChild(wrapper);
+
+    // Render content directly into the elements we just created
+    this._renderPaneContent(systemBody, systemPrompt, format);
+    this._renderPaneContent(userBody, userPrompt, format);
+
+    // Bind copy buttons
+    container.querySelectorAll('.btn-copy-pane').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const text = btn.dataset.target === 'system' ? systemPrompt : userPrompt;
+        UIHelpers.copyToClipboard(text).then(() => UIHelpers.showToast('Copie !', 'success'));
+      });
+    });
+  },
+
+  _renderPaneContent(pane, text, format) {
+    switch (format) {
+      case 'markdown':
+        pane.innerHTML = `<pre class="format-source"><code>${UIHelpers.escapeHtml(this._xmlToMarkdown(text))}</code></pre>`;
+        pane.style.whiteSpace = '';
+        break;
+      case 'rendered':
+        pane.style.whiteSpace = '';
+        pane.innerHTML = UIHelpers.renderMarkdown(this._xmlToMarkdown(text));
+        break;
+      case 'plaintext':
+      default:
+        pane.style.whiteSpace = 'pre-wrap';
+        pane.textContent = this._xmlToReadableText(text);
+        break;
+    }
+  },
+
+  /**
+   * Parse a markdown/text block to extract system and user prompt parts.
+   * Works with common separators from renderPreview and API responses.
+   */
+  _parseSplitFromMarkdown(markdown) {
+    // Try common separator patterns
+    const patterns = [
+      /## System Prompt\s*\n```\n([\s\S]*?)\n```\s*\n+## User Prompt\s*\n```\n([\s\S]*?)\n```/,
+      /=== SYSTEM PROMPT ===\s*\n([\s\S]*?)\n=== USER PROMPT ===\s*\n([\s\S]*?)$/,
+      /\[SYSTEM\]\s*\n([\s\S]*?)\n\[USER\]\s*\n([\s\S]*?)$/i,
+      /SYSTEM PROMPT[:\s]*\n([\s\S]*?)\n(?:USER PROMPT|---)[:\s]*\n([\s\S]*?)$/i,
+    ];
+    for (const pattern of patterns) {
+      const match = markdown.match(pattern);
+      if (match) {
+        return { systemPrompt: match[1].trim(), userPrompt: match[2].trim() };
+      }
+    }
+    // Fallback: try splitting on "---" separator
+    const dashSplit = markdown.split(/\n---\n/);
+    if (dashSplit.length >= 2) {
+      return { systemPrompt: dashSplit[0].trim(), userPrompt: dashSplit.slice(1).join('\n---\n').trim() };
+    }
+    return null;
   },
 
   _renderWithFormat(container, markdown, format) {
     switch (format) {
-      case 'markdown':
-        container.innerHTML = `<pre class="format-source"><code>${UIHelpers.escapeHtml(markdown)}</code></pre>`;
+      case 'markdown': {
+        // Clean XML inside the markdown (convert code block content to readable markdown)
+        const cleaned = this._cleanMarkdownContent(markdown);
+        container.innerHTML = `<pre class="format-source"><code>${UIHelpers.escapeHtml(cleaned)}</code></pre>`;
         container.style.whiteSpace = '';
         break;
-      case 'rendered':
+      }
+      case 'rendered': {
+        const cleaned = this._cleanMarkdownContent(markdown);
         container.style.whiteSpace = '';
-        container.innerHTML = UIHelpers.renderMarkdown(markdown);
+        container.innerHTML = UIHelpers.renderMarkdown(cleaned);
         break;
+      }
       case 'plaintext':
       default:
         container.style.whiteSpace = 'pre-wrap';
@@ -637,57 +1270,233 @@ const App = {
     }
   },
 
+  /**
+   * Clean the markdown from renderPreview(): replace code-block-wrapped XML
+   * content with proper markdown structure.
+   */
+  _cleanMarkdownContent(markdown) {
+    // Replace code blocks containing XML with cleaned markdown
+    return markdown
+      .replace(/```\n([\s\S]*?)\n```/g, (_, content) => {
+        return this._xmlToMarkdown(content);
+      })
+      // Notes: blockquotes → bullet points
+      .replace(/^>\s*(.*)/gm, '- $1')
+      .replace(/^- $/gm, '')
+      .replace(/\n{3,}/g, '\n\n');
+  },
+
+  /**
+   * Convert XML-tagged prompt text to clean readable French text (no markup at all).
+   * Works for Claude/DeepSeek (XML tags) and is a no-op for ChatGPT/Gemini (plain text).
+   */
+  _xmlToReadableText(text) {
+    if (!text) return '';
+    const sectionLabels = {
+      'context': 'Contexte',
+      'task': 'Tache',
+      'instructions': 'Instructions',
+      'examples': 'Exemples',
+      'constraints': 'Contraintes',
+      'error_recovery': 'Gestion d\'erreur',
+      'output_format': 'Format de sortie',
+      'input_description': 'Donnees d\'entree',
+      'optimization_context': 'Contexte d\'optimisation',
+    };
+    const fieldLabels = {
+      'domain': 'Domaine',
+      'audience': 'Public cible',
+      'tone': 'Ton',
+      'langue': 'Langue',
+      'question': 'Question',
+      'answer': 'Reponse',
+      'input': 'Entree',
+      'output': 'Sortie',
+    };
+    let result = text;
+    // Section opening tags → French label on its own line
+    for (const [tag, label] of Object.entries(sectionLabels)) {
+      result = result.replace(new RegExp(`<${tag}>`, 'gi'), `\n${label}\n`);
+    }
+    // Field tags with inline content: <tag>content</tag> → "Label : content"
+    for (const [tag, label] of Object.entries(fieldLabels)) {
+      result = result.replace(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`, 'gi'), `${label} : $1`);
+    }
+    // Wrapper tags (no label needed): <example>, <detail>
+    result = result.replace(/<\/?(?:example|detail)>/gi, '');
+    // Thinking tags
+    result = result.replace(/<\/?(?:thinking|think)>/gi, '');
+    // Remove all remaining closing tags
+    result = result.replace(/<\/[a-zA-Z_-]+>/g, '');
+    // Remove any remaining opening tags
+    result = result.replace(/<[a-zA-Z_-]+>/g, '');
+    // Clean up horizontal rules
+    result = result.replace(/^---+$/gm, '');
+    // Collapse excessive blank lines
+    result = result.replace(/\n{3,}/g, '\n\n');
+    // Clean leading/trailing whitespace per line but preserve indentation
+    result = result.split('\n').map(l => l.trimEnd()).join('\n');
+    return result.trim();
+  },
+
+  /**
+   * Convert XML-tagged prompt text to well-structured Markdown.
+   * No-op for prompts without XML (ChatGPT, Gemini).
+   */
+  _xmlToMarkdown(text) {
+    if (!text) return '';
+    const sectionHeaders = {
+      'context': '### Contexte',
+      'task': '### Tache',
+      'instructions': '### Instructions',
+      'examples': '### Exemples',
+      'constraints': '### Contraintes',
+      'error_recovery': '### Gestion d\'erreur',
+      'output_format': '### Format de sortie',
+      'input_description': '### Donnees d\'entree',
+      'optimization_context': '### Contexte d\'optimisation',
+    };
+    const fieldBold = {
+      'domain': 'Domaine',
+      'audience': 'Public cible',
+      'tone': 'Ton',
+      'langue': 'Langue',
+      'question': 'Question',
+      'answer': 'Reponse',
+      'input': 'Entree',
+      'output': 'Sortie',
+    };
+    let result = text;
+    // Section opening tags → markdown headers
+    for (const [tag, header] of Object.entries(sectionHeaders)) {
+      result = result.replace(new RegExp(`<${tag}>`, 'gi'), `\n${header}\n`);
+    }
+    // Field tags → bold labels
+    for (const [tag, label] of Object.entries(fieldBold)) {
+      result = result.replace(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`, 'gi'), `- **${label}** : $1`);
+    }
+    // Wrapper tags
+    result = result.replace(/<\/?(?:example|detail)>/gi, '');
+    result = result.replace(/<\/?(?:thinking|think)>/gi, '');
+    // Remove remaining closing/opening tags
+    result = result.replace(/<\/[a-zA-Z_-]+>/g, '');
+    result = result.replace(/<[a-zA-Z_-]+>/g, '');
+    // Clean horizontal rules
+    result = result.replace(/^---+$/gm, '---');
+    // Collapse excessive blank lines
+    result = result.replace(/\n{3,}/g, '\n\n');
+    return result.trim();
+  },
+
+  /**
+   * Strip markdown wrapper (from renderPreview) and clean XML for plain text display.
+   */
   _stripMarkdown(text) {
-    return text
-      // Headings → UPPERCASE labels
-      .replace(/^#{1,2}\s+(.*)/gm, (_, t) => t.toUpperCase())
-      .replace(/^#{3,6}\s+(.*)/gm, '$1')
-      // Bold/italic → plain
-      .replace(/\*\*(.*?)\*\*/g, '$1')
-      .replace(/\*(.*?)\*/g, '$1')
-      // Code blocks → content only
-      .replace(/`{3}[\s\S]*?`{3}/g, (m) => m.replace(/`{3}.*?\n?/g, '').trim())
-      .replace(/`(.*?)`/g, '$1')
-      // Blockquotes → plain
-      .replace(/^>\s+/gm, '')
-      // Lists → clean bullets
-      .replace(/^[-*+]\s+/gm, '- ')
-      // Links → text only
-      .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
-      // Horizontal rules → blank line
-      .replace(/^---+$/gm, '')
-      // XML/HTML tags → removed
-      .replace(/<\/?[^>]+>/g, '')
-      // Collapse multiple blank lines
-      .replace(/\n{3,}/g, '\n\n')
-      .trim();
+    return this._xmlToReadableText(
+      text
+        // Headings → label
+        .replace(/^#{1,2}\s+(.*)/gm, (_, t) => t.toUpperCase())
+        .replace(/^#{3,6}\s+(.*)/gm, '$1')
+        // Bold/italic → plain
+        .replace(/\*\*(.*?)\*\*/g, '$1')
+        .replace(/\*(.*?)\*/g, '$1')
+        // Code blocks → content only
+        .replace(/`{3}[\s\S]*?`{3}/g, (m) => m.replace(/`{3}.*?\n?/g, '').trim())
+        .replace(/`(.*?)`/g, '$1')
+        // Blockquotes → plain
+        .replace(/^>\s+/gm, '')
+        // Lists → clean
+        .replace(/^[-*+]\s+/gm, '- ')
+        // Links → text only
+        .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    );
   },
 
   // ===== FEEDBACK (Step 7) =====
 
-  applyFeedback() {
+  async applyFeedback() {
     const feedback = document.getElementById('preview-feedback').value.trim();
     if (!feedback) {
       UIHelpers.showToast('Veuillez decrire les modifications souhaitees.', 'error');
       return;
     }
 
-    // Append feedback as constraint and regenerate
-    const constraintsEl = document.getElementById('constraints');
-    if (constraintsEl.value.trim()) {
-      constraintsEl.value += '\n' + feedback;
-    } else {
-      constraintsEl.value = feedback;
+    const apiKey = localStorage.getItem('pf_api_key');
+    const openaiKey = localStorage.getItem('pf_openai_key');
+
+    // If no API key, fallback to local regeneration
+    if (!apiKey && !openaiKey) {
+      const constraintsEl = document.getElementById('constraints');
+      if (constraintsEl.value.trim()) {
+        constraintsEl.value += '\n' + feedback;
+      } else {
+        constraintsEl.value = feedback;
+      }
+      this.generatePreview();
+      document.getElementById('preview-feedback').value = '';
+      UIHelpers.showToast('Prompt regenere localement (ajoutez une cle API pour la regeneration IA).', 'info');
+      return;
     }
 
-    this.generatePreview();
-    document.getElementById('preview-feedback').value = '';
-    UIHelpers.showToast('Prompt regenere avec vos modifications.', 'success');
+    const llmKey = this.activeLLMTab;
+    if (!llmKey || !this.generatedPrompts[llmKey]) return;
+
+    const currentPrompt = document.getElementById('prompt-editor').value;
+    const formData = PromptBuilder.collectFormData();
+
+    // Disable button during loading
+    const btn = document.getElementById('btn-apply-feedback');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-sm"></span> Regeneration...';
+
+    try {
+      const response = await fetch('/api/refine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: currentPrompt + '\n\n---\nFEEDBACK UTILISATEUR : ' + feedback,
+          targetLLM: llmKey,
+          taskType: formData.taskType,
+          complexity: formData.complexity,
+          apiKey,
+          openaiKey
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erreur de regeneration');
+      }
+
+      const result = await response.json();
+
+      // Update the preview with the AI-refined version
+      document.getElementById('prompt-editor').value = result.optimizedPrompt;
+      this._renderWithFormat(document.getElementById('prompt-preview'), result.optimizedPrompt, this.displayFormat);
+
+      const tokens = UIHelpers.estimateTokens(result.optimizedPrompt);
+      document.getElementById('token-counter').textContent = `~${tokens} tokens`;
+
+      document.getElementById('preview-feedback').value = '';
+      const providerLabel = result.fallback ? `${result.provider} (secours)` : result.provider;
+      UIHelpers.showToast(`Prompt regenere via ${providerLabel} !`, 'success');
+    } catch (error) {
+      UIHelpers.showToast('Erreur : ' + error.message, 'error', 5000);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }
   },
 
   // ===== AI OPTIMIZATION (Step 8) =====
 
   prepareOptimizationStep() {
+    if (this.mode === 'agent') {
+      this._prepareAgentOptimization();
+      return;
+    }
+
     // Ensure we have generated prompts
     if (Object.keys(this.originalPrompts).length === 0) {
       this.generatePreview();
@@ -714,6 +1523,59 @@ const App = {
     this.checkApiKey();
   },
 
+  _prepareAgentOptimization() {
+    // Collect current agent data
+    const agentData = this._currentAgentData || this.collectAgentData();
+    this._originalAgentData = JSON.parse(JSON.stringify(agentData));
+    this._optimizedAgentData = null;
+
+    // Hide LLM tabs, show platform name instead
+    const tabsContainer = document.getElementById('llm-tabs-optimize');
+    const platformNames = { claude: 'Projet Claude', chatgpt: 'GPT ChatGPT', gemini: 'Gem Gemini' };
+    tabsContainer.innerHTML = `<button class="llm-tab active">${platformNames[agentData.platform] || agentData.platform}</button>`;
+
+    // Show original on the left
+    const previewOriginal = document.getElementById('preview-original');
+    const editorOriginal = document.getElementById('editor-original');
+    previewOriginal.innerHTML = this._renderAgentPreviewCards(agentData);
+    previewOriginal.classList.remove('hidden');
+    editorOriginal.classList.add('hidden');
+    const originalText = this._agentDataToText(agentData);
+    const origTokens = UIHelpers.estimateTokens(originalText);
+    document.getElementById('token-counter-original').textContent = `~${origTokens} tokens`;
+
+    // Placeholder on the right
+    document.getElementById('preview-optimized').innerHTML = '<div class="comparison-placeholder"><p>Cliquez sur &laquo; Optimiser &raquo; pour voir le resultat ici.</p></div>';
+    document.getElementById('editor-optimized').classList.add('hidden');
+    document.getElementById('preview-optimized').classList.remove('hidden');
+    document.getElementById('token-counter-optimized').textContent = '';
+    this._hideOptimizeRightPanelSections();
+
+    this.checkApiKey();
+  },
+
+  _renderAgentPreviewCards(data) {
+    let html = '';
+    if (data.platform === 'claude') {
+      html += this._renderAgentField('Sur quoi travaillez-vous ?', data.workingOn);
+      html += this._renderAgentField("Qu'essayez-vous de faire ?", data.tryingToDo);
+      html += this._renderAgentField('Instructions', data.instructions);
+    } else if (data.platform === 'chatgpt') {
+      html += this._renderAgentField('Nom', data.name);
+      html += this._renderAgentField('Description', data.description);
+      html += this._renderAgentField('Instructions', data.instructions);
+      if (data.conversationStarters && data.conversationStarters.length > 0) {
+        html += `<div class="agent-preview-card"><h4>Amorces de conversation</h4>
+          <ul class="agent-starters-list">${data.conversationStarters.map(s => `<li class="agent-starter-item">${this._escapeHTML(s)}</li>`).join('')}</ul></div>`;
+      }
+    } else if (data.platform === 'gemini') {
+      html += this._renderAgentField('Nom', data.name);
+      html += this._renderAgentField('Description', data.description);
+      html += this._renderAgentField('Instructions', data.instructions);
+    }
+    return html;
+  },
+
   showOptimizationForLLM(llmKey) {
     this.activeLLMTabOptimize = llmKey;
 
@@ -730,12 +1592,13 @@ const App = {
       this._renderComparisonPanel('optimized', llmKey);
       this._showOptimizeRightPanelSections(llmKey);
     } else {
-      document.getElementById('preview-optimized').innerHTML = '<div class="comparison-placeholder"><p>Cliquez sur « Lancer l\'optimisation » pour voir le resultat ici.</p></div>';
+      document.getElementById('preview-optimized').innerHTML = '<div class="comparison-placeholder"><p>Cliquez sur &laquo; Optimiser le prompt &raquo; pour voir le resultat ici.</p></div>';
       document.getElementById('editor-optimized').classList.add('hidden');
       document.getElementById('preview-optimized').classList.remove('hidden');
       document.getElementById('token-counter-optimized').textContent = '';
       this._hideOptimizeRightPanelSections();
     }
+    this._updateOptimizeButton();
   },
 
   _showOptimizeRightPanelSections(llmKey) {
@@ -775,8 +1638,7 @@ const App = {
 
     if (!content) {
       if (panel === 'optimized') {
-        // Show placeholder when no optimized content yet
-        preview.innerHTML = '<div class="comparison-placeholder"><p>Cliquez sur « Lancer l\'optimisation » pour voir le resultat ici.</p></div>';
+        preview.innerHTML = '<div class="comparison-placeholder"><p>Cliquez sur &laquo; Optimiser ce modele &raquo; pour voir le resultat ici.</p></div>';
         preview.classList.remove('hidden');
         editor.classList.add('hidden');
       }
@@ -789,6 +1651,17 @@ const App = {
         editor.value = md;
         editor.classList.remove('hidden');
         preview.classList.add('hidden');
+      } else if (mode === 'split') {
+        // Try to parse system/user from the optimized markdown
+        const parsed = this._parseSplitFromMarkdown(md);
+        if (parsed) {
+          this._renderSplitView(preview, parsed.systemPrompt, parsed.userPrompt, format);
+        } else {
+          // Cannot parse split - fallback to combined
+          this._renderWithFormat(preview, md, format);
+        }
+        preview.classList.remove('hidden');
+        editor.classList.add('hidden');
       } else {
         this._renderWithFormat(preview, md, format);
         preview.classList.remove('hidden');
@@ -797,12 +1670,17 @@ const App = {
       const tokens = UIHelpers.estimateTokens(md);
       document.getElementById('token-counter-optimized').textContent = `~${tokens} tokens`;
     } else if (panel === 'original') {
-      const md = LLMAdapters.renderPreview(content, llmKey, mode === 'combined' ? 'combined' : 'split');
       if (mode === 'edit') {
+        const md = LLMAdapters.renderPreview(content, llmKey, 'combined');
         editor.value = md;
         editor.classList.remove('hidden');
         preview.classList.add('hidden');
+      } else if (mode === 'split' && content.systemPrompt && content.userPrompt) {
+        this._renderSplitView(preview, content.systemPrompt, content.userPrompt, format);
+        preview.classList.remove('hidden');
+        editor.classList.add('hidden');
       } else {
+        const md = LLMAdapters.renderPreview(content, llmKey, 'combined');
         this._renderWithFormat(preview, md, format);
         preview.classList.remove('hidden');
         editor.classList.add('hidden');
@@ -875,6 +1753,12 @@ const App = {
       return;
     }
 
+    // Agent mode optimization
+    if (this.mode === 'agent') {
+      await this._optimizeAgent(apiKey, openaiKey);
+      return;
+    }
+
     const llmKey = this.activeLLMTabOptimize;
     if (!llmKey || !this.originalPrompts[llmKey]) return;
 
@@ -882,7 +1766,8 @@ const App = {
     const originalRaw = LLMAdapters.getRawPrompt(original);
     const formData = PromptBuilder.collectFormData();
 
-    this._setLoadingState(true);
+    this._setLoadingState(true, 'Optimisation en cours...');
+    this._startProgressSimulation();
 
     try {
       const response = await fetch('/api/refine', {
@@ -936,25 +1821,231 @@ const App = {
     }
   },
 
-  _setLoadingState(loading) {
+  async _optimizeAgent(apiKey, openaiKey) {
+    const agentData = this._originalAgentData || this.collectAgentData();
+    const agentText = this._agentDataToText(agentData);
+
+    this._setLoadingState(true, 'Optimisation de l\'agent en cours...');
+    this._startProgressSimulation();
+
+    try {
+      const response = await fetch('/api/refine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: agentText,
+          mode: 'agent',
+          platform: agentData.platform,
+          agentData,
+          apiKey,
+          openaiKey
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erreur d\'optimisation');
+      }
+
+      const result = await response.json();
+
+      // Parse optimized agent data
+      let optimizedData;
+      try {
+        optimizedData = typeof result.optimizedPrompt === 'string' ? JSON.parse(result.optimizedPrompt) : result.optimizedPrompt;
+        optimizedData.platform = agentData.platform;
+      } catch {
+        // Fallback: show as text
+        optimizedData = null;
+      }
+
+      if (optimizedData) {
+        this._optimizedAgentData = optimizedData;
+        const previewOptimized = document.getElementById('preview-optimized');
+        previewOptimized.innerHTML = this._renderAgentPreviewCards(optimizedData);
+        previewOptimized.classList.remove('hidden');
+        document.getElementById('editor-optimized').classList.add('hidden');
+
+        // Store text version for copy
+        const optimizedText = this._agentDataToText(optimizedData);
+        document.getElementById('editor-optimized').value = optimizedText;
+        const tokens = UIHelpers.estimateTokens(optimizedText);
+        document.getElementById('token-counter-optimized').textContent = `~${tokens} tokens`;
+      } else {
+        // Plain text fallback
+        const previewOptimized = document.getElementById('preview-optimized');
+        this._renderWithFormat(previewOptimized, result.optimizedPrompt, 'plaintext');
+        previewOptimized.classList.remove('hidden');
+        document.getElementById('editor-optimized').value = result.optimizedPrompt;
+      }
+
+      // Show notes
+      const notesEl = document.getElementById('optimize-notes');
+      const notesContent = document.getElementById('optimize-notes-content');
+      if (result.notes) {
+        notesContent.innerHTML = UIHelpers.renderMarkdown(result.notes);
+        notesEl.classList.remove('hidden');
+      }
+      document.getElementById('optimize-feedback-zone').classList.remove('hidden');
+      document.getElementById('optimize-actions').classList.remove('hidden');
+      document.getElementById('optimize-feedback').value = '';
+
+      const providerLabel = result.fallback ? `${result.provider} (secours)` : result.provider;
+      UIHelpers.showToast(`Optimise via ${providerLabel} !`, 'success');
+
+      if (result.inputTokens || result.outputTokens) {
+        UIHelpers.showToast(
+          `${result.model} : ${result.inputTokens} in / ${result.outputTokens} out`,
+          'info', 5000
+        );
+      }
+    } catch (error) {
+      UIHelpers.showToast('Erreur : ' + error.message, 'error', 5000);
+    } finally {
+      this._setLoadingState(false);
+    }
+  },
+
+  async optimizeAllModels() {
+    const apiKey = localStorage.getItem('pf_api_key');
+    const openaiKey = localStorage.getItem('pf_openai_key');
+    if (!apiKey && !openaiKey) {
+      this.openSettings();
+      UIHelpers.showToast('Configurez au moins une cle API.', 'error');
+      return;
+    }
+
+    const models = Object.keys(this.originalPrompts);
+    if (models.length === 0) return;
+
+    this._setLoadingState(true, `Optimisation de ${models.length} modele(s)...`);
+    const progressBar = document.getElementById('progress-bar-fill');
+    const statusText = document.getElementById('ai-status-text');
+    if (progressBar) { progressBar.classList.remove('indeterminate'); progressBar.style.width = '0%'; }
+    let successCount = 0;
+    let errorCount = 0;
+    let processed = 0;
+
+    for (const llmKey of models) {
+      const original = this.originalPrompts[llmKey];
+      if (!original) { processed++; continue; }
+
+      // Skip already optimized
+      if (this.generatedPrompts[llmKey] && this.generatedPrompts[llmKey]._optimized) {
+        successCount++;
+        processed++;
+        if (progressBar) progressBar.style.width = Math.round((processed / models.length) * 100) + '%';
+        if (statusText) statusText.textContent = `Optimisation ${processed}/${models.length}...`;
+        continue;
+      }
+
+      const originalRaw = LLMAdapters.getRawPrompt(original);
+      const formData = PromptBuilder.collectFormData();
+      if (statusText) statusText.textContent = `Optimisation ${processed + 1}/${models.length}...`;
+
+      try {
+        const response = await fetch('/api/refine', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: originalRaw,
+            targetLLM: llmKey,
+            taskType: formData.taskType,
+            complexity: formData.complexity,
+            apiKey,
+            openaiKey
+          })
+        });
+
+        if (!response.ok) throw new Error('Erreur API');
+
+        const result = await response.json();
+        if (!this.generatedPrompts[llmKey]) {
+          this.generatedPrompts[llmKey] = { ...original };
+        }
+        this.generatedPrompts[llmKey]._optimized = true;
+        this.generatedPrompts[llmKey]._optimizedMarkdown = result.optimizedPrompt;
+        this.generatedPrompts[llmKey]._optimizeNotes = result.notes || '';
+        successCount++;
+      } catch (error) {
+        errorCount++;
+      }
+      processed++;
+      if (progressBar) progressBar.style.width = Math.round((processed / models.length) * 100) + '%';
+    }
+
+    this._setLoadingState(false);
+
+    // Refresh current view
+    const currentLLM = this.activeLLMTabOptimize;
+    if (currentLLM) this.showOptimizationForLLM(currentLLM);
+
+    if (errorCount === 0) {
+      UIHelpers.showToast(`${successCount} modele(s) optimise(s) avec succes !`, 'success');
+    } else {
+      UIHelpers.showToast(`${successCount} reussi(s), ${errorCount} erreur(s).`, 'warning');
+    }
+  },
+
+  _setLoadingState(loading, progressText) {
     const btn = document.getElementById('btn-optimize');
+    const btnDd = document.getElementById('btn-optimize-dropdown');
     const btnRegen = document.getElementById('btn-regenerate');
     const status = document.getElementById('ai-status');
+    const label = document.getElementById('btn-optimize-label');
+    const progressBar = document.getElementById('progress-bar-fill');
+    const statusText = document.getElementById('ai-status-text');
 
     if (loading) {
       btn.disabled = true;
-      btn.textContent = 'Optimisation...';
+      if (btnDd) btnDd.disabled = true;
+      if (label) label.textContent = 'Optimisation...';
       if (btnRegen) btnRegen.disabled = true;
       status.classList.remove('hidden');
+      if (progressBar) {
+        progressBar.style.width = '0%';
+        progressBar.classList.add('indeterminate');
+      }
+      if (statusText && progressText) statusText.textContent = progressText;
+      else if (statusText) statusText.textContent = 'Optimisation en cours...';
+      this._progressInterval = null;
     } else {
-      btn.disabled = !localStorage.getItem('pf_api_key') && !localStorage.getItem('pf_openai_key');
-      btn.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-        Lancer l'optimisation IA
-      `;
-      if (btnRegen) btnRegen.disabled = false;
-      status.classList.add('hidden');
+      // Finish animation: jump to 100% then hide
+      if (progressBar) {
+        progressBar.classList.remove('indeterminate');
+        progressBar.style.width = '100%';
+      }
+      if (this._progressInterval) {
+        clearInterval(this._progressInterval);
+        this._progressInterval = null;
+      }
+      setTimeout(() => {
+        btn.disabled = false;
+        if (btnDd) btnDd.disabled = false;
+        if (btnRegen) btnRegen.disabled = false;
+        status.classList.add('hidden');
+        if (progressBar) {
+          progressBar.style.width = '0%';
+          progressBar.classList.remove('indeterminate');
+        }
+        this._updateOptimizeButton();
+      }, 400);
     }
+  },
+
+  _startProgressSimulation() {
+    const progressBar = document.getElementById('progress-bar-fill');
+    if (!progressBar) return;
+    progressBar.classList.remove('indeterminate');
+    let progress = 5;
+    progressBar.style.width = progress + '%';
+    this._progressInterval = setInterval(() => {
+      // Slow down as we approach 90%
+      const remaining = 90 - progress;
+      const increment = Math.max(0.5, remaining * 0.08);
+      progress = Math.min(90, progress + increment);
+      progressBar.style.width = progress + '%';
+    }, 300);
   },
 
   async _regenerateWithFeedback() {
@@ -980,7 +2071,8 @@ const App = {
     const promptToRefine = currentOptimized || LLMAdapters.getRawPrompt(this.originalPrompts[llmKey]);
     const formData = PromptBuilder.collectFormData();
 
-    this._setLoadingState(true);
+    this._setLoadingState(true, 'Regeneration en cours...');
+    this._startProgressSimulation();
 
     try {
       const response = await fetch('/api/refine', {
@@ -1064,8 +2156,249 @@ const App = {
   checkApiKey() {
     const hasAnthropic = !!localStorage.getItem('pf_api_key');
     const hasOpenAI = !!localStorage.getItem('pf_openai_key');
+    this._hasApiKey = hasAnthropic || hasOpenAI;
+    // Never disable the button — let click handler redirect to settings
     const btn = document.getElementById('btn-optimize');
-    if (btn) btn.disabled = !(hasAnthropic || hasOpenAI);
+    if (btn) btn.disabled = false;
+    const btnDd = document.getElementById('btn-optimize-dropdown');
+    if (btnDd) btnDd.disabled = false;
+    // Show/hide API key warning banner
+    const banner = document.getElementById('api-key-banner');
+    if (banner) banner.classList.toggle('hidden', this._hasApiKey);
+    this._updateOptimizeButton();
+  },
+
+  /**
+   * Update the optimize button label and dropdown visibility
+   * based on number of selected models
+   */
+  _updateOptimizeButton() {
+    const modelCount = Object.keys(this.originalPrompts).length;
+    const label = document.getElementById('btn-optimize-label');
+    const dropdown = document.getElementById('btn-optimize-dropdown');
+    const btnOptimize = document.getElementById('btn-optimize');
+    const wrapper = btnOptimize ? btnOptimize.closest('.optimize-btn-wrapper') : null;
+
+    if (!label || !dropdown) return;
+
+    if (modelCount <= 1) {
+      // Single model: simple button, no dropdown
+      label.textContent = 'Optimiser le prompt';
+      dropdown.classList.add('hidden');
+      if (btnOptimize) btnOptimize.style.borderRadius = 'var(--radius-sm)';
+      if (wrapper) wrapper.classList.remove('has-dropdown');
+    } else {
+      // Multiple models: show dropdown arrow
+      const activeName = this._getActiveOptimizeModelName();
+      label.textContent = `Optimiser "${activeName}"`;
+      dropdown.classList.remove('hidden');
+      if (btnOptimize) btnOptimize.style.borderRadius = 'var(--radius-sm) 0 0 var(--radius-sm)';
+      if (wrapper) wrapper.classList.add('has-dropdown');
+
+      // Update menu labels
+      const singleLabel = document.getElementById('opt-single-label');
+      const allLabel = document.getElementById('opt-all-label');
+      if (singleLabel) singleLabel.textContent = `Optimiser "${activeName}"`;
+      if (allLabel) allLabel.textContent = `Optimiser les ${modelCount} modeles`;
+    }
+  },
+
+  _getActiveOptimizeModelName() {
+    const llmKey = this.activeLLMTabOptimize;
+    if (!llmKey) return 'modele';
+    const allConfigs = { ...LLMAdapters.config, ...LLMAdapters.imageConfig, ...LLMAdapters.videoConfig, ...LLMAdapters.vibeConfig };
+    const cfg = allConfigs[llmKey];
+    return cfg ? cfg.name : llmKey;
+  },
+
+  // ===== DARK MODE =====
+
+  _initDarkMode() {
+    const saved = localStorage.getItem('pf_dark_mode');
+    if (saved === 'true' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    }
+    this._updateDarkModeIcon();
+  },
+
+  toggleDarkMode() {
+    const isDark = document.documentElement.classList.toggle('dark');
+    localStorage.setItem('pf_dark_mode', isDark);
+    this._updateDarkModeIcon();
+  },
+
+  _updateDarkModeIcon() {
+    const isDark = document.documentElement.classList.contains('dark');
+    const icon = document.getElementById('icon-dark-mode');
+    const btn = document.getElementById('btn-dark-mode');
+    if (!icon) return;
+    if (isDark) {
+      // Show sun icon in dark mode (click to go light)
+      icon.innerHTML = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+      btn.setAttribute('aria-label', 'Mode clair');
+      btn.setAttribute('title', 'Mode clair');
+    } else {
+      // Show moon icon in light mode (click to go dark)
+      icon.innerHTML = '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>';
+      btn.setAttribute('aria-label', 'Mode sombre');
+      btn.setAttribute('title', 'Mode sombre');
+    }
+  },
+
+  // ===== AUTO-SAVE =====
+
+  _bindAutoSave() {
+    const save = () => {
+      clearTimeout(this._autoSaveTimer);
+      this._autoSaveTimer = setTimeout(() => this._autoSaveForm(), 2000);
+    };
+    document.addEventListener('input', save);
+    document.addEventListener('change', save);
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('.llm-card, .task-card, .agent-platform-card, .mode-btn')) save();
+    });
+  },
+
+  _autoSaveForm() {
+    try {
+      const data = {
+        selectedModels: Array.from(document.querySelectorAll('.llm-card.selected')).map(c => c.dataset.llm),
+        selectedTask: document.querySelector('.task-card.selected')?.dataset.task || '',
+        customTask: document.getElementById('custom-task-input').value,
+        persona: document.getElementById('persona').value,
+        freeDescription: document.getElementById('free-description').value,
+        taskDescription: document.getElementById('task-description').value,
+        inputDescription: document.getElementById('input-description').value,
+        outputFormat: document.getElementById('output-format').value,
+        constraints: document.getElementById('constraints').value,
+        imgSubject: document.getElementById('img-subject').value,
+        vidSubject: document.getElementById('vid-subject').value,
+        complexity: document.querySelector('input[name="complexity"]:checked')?.value || 'basic',
+        outputLength: document.querySelector('input[name="output-length"]:checked')?.value || 'moyen',
+        fewShot: document.getElementById('few-shot-toggle').checked,
+        cot: document.getElementById('cot-toggle').checked,
+        multiSelects: {},
+        currentStep: this.currentStep,
+        maxStepReached: this.maxStepReached,
+        // Agent state
+        mode: this.mode,
+        agentPlatform: this.agentPlatform,
+        agentDescription: document.getElementById('agent-description')?.value || '',
+        agentClaudeWorkingOn: document.getElementById('agent-claude-working-on')?.value || '',
+        agentClaudeTryingTo: document.getElementById('agent-claude-trying-to')?.value || '',
+        agentClaudeInstructions: document.getElementById('agent-claude-instructions')?.value || '',
+        agentChatgptName: document.getElementById('agent-chatgpt-name')?.value || '',
+        agentChatgptDescription: document.getElementById('agent-chatgpt-description')?.value || '',
+        agentChatgptInstructions: document.getElementById('agent-chatgpt-instructions')?.value || '',
+        agentChatgptStarters: this._collectConversationStarters(),
+        agentGeminiName: document.getElementById('agent-gemini-name')?.value || '',
+        agentGeminiDescription: document.getElementById('agent-gemini-description')?.value || '',
+        agentGeminiInstructions: document.getElementById('agent-gemini-instructions')?.value || ''
+      };
+      // Save multi-select values
+      document.querySelectorAll('.multi-select').forEach(ms => {
+        if (ms._selected) data.multiSelects[ms.id] = ms._selected;
+      });
+      localStorage.setItem('pf_autosave', JSON.stringify(data));
+    } catch (e) { /* silent fail */ }
+  },
+
+  _restoreAutoSave() {
+    try {
+      const raw = localStorage.getItem('pf_autosave');
+      if (!raw) return;
+      const data = JSON.parse(raw);
+
+      // Restore selected models
+      if (data.selectedModels && data.selectedModels.length > 0) {
+        data.selectedModels.forEach(key => {
+          const card = document.querySelector(`.llm-card[data-llm="${key}"]`);
+          if (card) card.classList.add('selected');
+        });
+      }
+
+      // Restore selected task
+      if (data.selectedTask) {
+        const taskCard = document.querySelector(`.task-card[data-task="${data.selectedTask}"]`);
+        if (taskCard) {
+          document.querySelectorAll('.task-card').forEach(c => c.classList.remove('selected'));
+          taskCard.classList.add('selected');
+          if (data.selectedTask === 'autre') document.getElementById('custom-task')?.classList.remove('hidden');
+        }
+      }
+
+      // Restore text fields
+      if (data.customTask) document.getElementById('custom-task-input').value = data.customTask;
+      if (data.persona) document.getElementById('persona').value = data.persona;
+      if (data.freeDescription) document.getElementById('free-description').value = data.freeDescription;
+      if (data.taskDescription) document.getElementById('task-description').value = data.taskDescription;
+      if (data.inputDescription) document.getElementById('input-description').value = data.inputDescription;
+      if (data.outputFormat) document.getElementById('output-format').value = data.outputFormat;
+      if (data.constraints) document.getElementById('constraints').value = data.constraints;
+      if (data.imgSubject) document.getElementById('img-subject').value = data.imgSubject;
+      if (data.vidSubject) document.getElementById('vid-subject').value = data.vidSubject;
+
+      // Restore radios
+      if (data.complexity) {
+        const r = document.querySelector(`input[name="complexity"][value="${data.complexity}"]`);
+        if (r) r.checked = true;
+      }
+      if (data.outputLength) {
+        const r = document.querySelector(`input[name="output-length"][value="${data.outputLength}"]`);
+        if (r) r.checked = true;
+      }
+
+      // Restore toggles
+      if (data.fewShot) document.getElementById('few-shot-toggle').checked = true;
+      if (data.cot) document.getElementById('cot-toggle').checked = true;
+
+      // Restore multi-selects
+      if (data.multiSelects) {
+        Object.entries(data.multiSelects).forEach(([msId, selected]) => {
+          const ms = document.getElementById(msId);
+          if (ms && ms._selected !== undefined) {
+            ms._selected = selected;
+            this._renderMultiSelect(ms);
+          }
+        });
+      }
+
+      // Restore agent state
+      if (data.mode && data.mode !== 'prompt') {
+        this.mode = data.mode;
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.mode === data.mode);
+        });
+        this.renderStepIndicators();
+      }
+      if (data.agentPlatform) {
+        this.agentPlatform = data.agentPlatform;
+        const card = document.querySelector(`.agent-platform-card[data-platform="${data.agentPlatform}"]`);
+        if (card) {
+          document.querySelectorAll('.agent-platform-card').forEach(c => c.classList.remove('selected'));
+          card.classList.add('selected');
+        }
+      }
+      if (data.agentDescription) document.getElementById('agent-description').value = data.agentDescription;
+      if (data.agentClaudeWorkingOn) document.getElementById('agent-claude-working-on').value = data.agentClaudeWorkingOn;
+      if (data.agentClaudeTryingTo) document.getElementById('agent-claude-trying-to').value = data.agentClaudeTryingTo;
+      if (data.agentClaudeInstructions) document.getElementById('agent-claude-instructions').value = data.agentClaudeInstructions;
+      if (data.agentChatgptName) document.getElementById('agent-chatgpt-name').value = data.agentChatgptName;
+      if (data.agentChatgptDescription) document.getElementById('agent-chatgpt-description').value = data.agentChatgptDescription;
+      if (data.agentChatgptInstructions) document.getElementById('agent-chatgpt-instructions').value = data.agentChatgptInstructions;
+      if (data.agentChatgptStarters && data.agentChatgptStarters.length > 0) {
+        this._renderConversationStarters(data.agentChatgptStarters);
+      }
+      if (data.agentGeminiName) document.getElementById('agent-gemini-name').value = data.agentGeminiName;
+      if (data.agentGeminiDescription) document.getElementById('agent-gemini-description').value = data.agentGeminiDescription;
+      if (data.agentGeminiInstructions) document.getElementById('agent-gemini-instructions').value = data.agentGeminiInstructions;
+
+      // Restore navigation state
+      if (data.maxStepReached > 1) {
+        this.maxStepReached = data.maxStepReached;
+        this.updateStepIndicators();
+      }
+    } catch (e) { /* silent fail */ }
   },
 
   // ===== LOCAL STORAGE =====
@@ -1080,6 +2413,8 @@ const App = {
     localStorage.removeItem('pf_preferences');
     localStorage.removeItem('pf_history');
     localStorage.removeItem('pf_tutorial_seen');
+    localStorage.removeItem('pf_autosave');
+    localStorage.removeItem('pf_dark_mode');
     this.checkApiKey();
     UIHelpers.showToast('Toutes les donnees ont ete effacees.', 'info');
   },
@@ -1088,19 +2423,31 @@ const App = {
     // Reset state
     this.currentStep = 1;
     this.maxStepReached = 1;
+    this.mode = 'prompt';
+    this.agentPlatform = null;
     this.generatedPrompts = {};
     this.originalPrompts = {};
     this.activeLLMTab = null;
     this.activeLLMTabOptimize = null;
     this.editMode = false;
     this.previewMode = 'split';
-    this.displayFormat = 'rendered';
+    this.displayFormat = 'plaintext';
     this.step8Modes = { original: 'split', optimized: 'split' };
-    this.step8Formats = { original: 'rendered', optimized: 'rendered' };
+    this.step8Formats = { original: 'plaintext', optimized: 'plaintext' };
     this.smartQuestionsGenerated = false;
 
-    // Deselect all cards
-    document.querySelectorAll('.llm-card.selected, .task-card.selected').forEach(c => c.classList.remove('selected'));
+    // Reset mode toggle
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === 'prompt');
+    });
+
+    // Deselect all cards (including agent platform cards)
+    document.querySelectorAll('.llm-card.selected, .task-card.selected, .agent-platform-card.selected').forEach(c => c.classList.remove('selected'));
+
+    // Reset agent fields
+    document.querySelectorAll('.agent-fields').forEach(f => f.classList.add('hidden'));
+    const startersContainer = document.getElementById('agent-chatgpt-starters');
+    if (startersContainer) startersContainer.innerHTML = '';
 
     // Reset all form fields
     document.querySelectorAll('input[type="text"], textarea').forEach(el => { el.value = ''; });
@@ -1135,7 +2482,8 @@ const App = {
     document.getElementById('image-fields')?.classList.add('hidden');
     document.getElementById('video-fields')?.classList.add('hidden');
 
-    // Show step 1
+    // Re-render indicators for prompt mode and show step 1
+    this.renderStepIndicators();
     this.showStep(1);
     UIHelpers.showToast('Formulaire reinitialise.', 'info');
   },
@@ -1371,20 +2719,18 @@ const App = {
   },
 
   _updateGuideHighlights() {
-    // Clear all previous highlights
     document.querySelectorAll('.guide-highlight, .guide-highlight-grid').forEach(el => {
       el.classList.remove('guide-highlight', 'guide-highlight-grid');
     });
 
-    switch (this.currentStep) {
-      case 1: {
+    const stepId = this._getCurrentStepId();
+
+    switch (stepId) {
+      case 'step-prompt-1': {
         const hasSelected = document.querySelectorAll('.llm-card.selected').length > 0;
         if (!hasSelected) {
           document.getElementById('llm-grid').classList.add('guide-highlight-grid');
         }
-        break;
-      }
-      case 2: {
         const hasTask = document.querySelector('.task-card.selected');
         if (!hasTask) {
           document.getElementById('task-grid').classList.add('guide-highlight-grid');
@@ -1392,14 +2738,14 @@ const App = {
         this._highlightIfEmpty('persona');
         break;
       }
-      case 3: {
+      case 'step-prompt-2': {
         this._highlightIfEmpty('domain');
         this._highlightIfEmpty('audience');
         this._highlightIfEmpty('output-language');
         this._highlightIfEmpty('tone');
         break;
       }
-      case 4: {
+      case 'step-prompt-3': {
         const selected = this._getSelectedModels();
         const hasText = PromptBuilder.hasTextModel(selected);
         const hasVibe = PromptBuilder.hasVibeModel(selected);
@@ -1426,21 +2772,9 @@ const App = {
         }
         break;
       }
-      case 5: {
-        // Highlight complexity pills if default (basic)
-        const complexity = document.querySelector('input[name="complexity"]:checked');
-        if (complexity && complexity.value === 'basic') {
-          document.getElementById('complexity-group')?.classList.add('guide-highlight');
-        }
-        // Highlight length pills if default (moyen)
-        const length = document.querySelector('input[name="output-length"]:checked');
-        if (length && length.value === 'moyen') {
-          document.getElementById('length-group')?.classList.add('guide-highlight');
-        }
+      case 'step-prompt-4':
         break;
-      }
-      case 6: {
-        // Highlight unanswered smart questions
+      case 'step-shared-questions': {
         document.querySelectorAll('.smart-question').forEach(q => {
           const input = q.querySelector('.smart-answer');
           if (input && !input.value.trim()) {
@@ -1654,6 +2988,10 @@ const App = {
 
     // Settings modal
     document.getElementById('btn-settings').addEventListener('click', () => this.openSettings());
+    const bannerBtn = document.getElementById('btn-banner-settings');
+    if (bannerBtn) bannerBtn.addEventListener('click', () => this.openSettings());
+    const skipBtn = document.getElementById('btn-skip-settings');
+    if (skipBtn) skipBtn.addEventListener('click', (e) => { e.preventDefault(); this.openSettings(); });
     document.getElementById('btn-close-settings').addEventListener('click', () => this.closeSettings());
     document.getElementById('btn-save-key').addEventListener('click', () => this.saveApiKey());
     document.getElementById('toggle-key-visibility').addEventListener('click', () => {
@@ -1801,8 +3139,40 @@ const App = {
       });
     });
 
-    // Step 8: Optimize
-    document.getElementById('btn-optimize').addEventListener('click', () => this.optimizeWithAI());
+    // Dark mode
+    document.getElementById('btn-dark-mode').addEventListener('click', () => this.toggleDarkMode());
+
+    // Step 8: Optimize (contextual button)
+    document.getElementById('btn-optimize').addEventListener('click', () => {
+      const modelCount = Object.keys(this.originalPrompts).length;
+      if (modelCount <= 1) {
+        this.optimizeWithAI();
+      } else {
+        this.optimizeWithAI();
+      }
+    });
+    // Dropdown toggle
+    const ddBtn = document.getElementById('btn-optimize-dropdown');
+    if (ddBtn) {
+      ddBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.getElementById('optimize-menu').classList.toggle('hidden');
+      });
+    }
+    // Menu options
+    document.getElementById('opt-single').addEventListener('click', () => {
+      document.getElementById('optimize-menu').classList.add('hidden');
+      this.optimizeWithAI();
+    });
+    document.getElementById('opt-all').addEventListener('click', () => {
+      document.getElementById('optimize-menu').classList.add('hidden');
+      this.optimizeAllModels();
+    });
+    // Close menu on outside click
+    document.addEventListener('click', () => {
+      const menu = document.getElementById('optimize-menu');
+      if (menu) menu.classList.add('hidden');
+    });
 
     // Step 8: Regenerate with feedback
     document.getElementById('btn-regenerate').addEventListener('click', () => this._regenerateWithFeedback());
@@ -1845,6 +3215,17 @@ const App = {
       document.querySelectorAll('.download-menu').forEach(m => m.classList.add('hidden'));
       document.querySelectorAll('.format-menu').forEach(m => m.classList.add('hidden'));
     });
+
+    // Mode toggle buttons (present in both step-prompt-1 and step-agent-1)
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => this.setMode(btn.dataset.mode));
+    });
+
+    // Agent: Add conversation starter
+    const addStarterBtn = document.getElementById('add-starter');
+    if (addStarterBtn) {
+      addStarterBtn.addEventListener('click', () => this._addConversationStarter());
+    }
 
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
