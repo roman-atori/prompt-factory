@@ -19,7 +19,7 @@
   <header class="app-header">
     <div class="logo" id="logo-home" style="cursor:pointer">
       <h1>PROMPT FACTORY</h1>
-      <span class="tagline">Creez des prompts et des agents IA, etape par etape</span>
+      <span class="tagline">Creez des prompts et des GPTs, etape par etape</span>
     </div>
     <div style="display:flex;align-items:center;gap:var(--space-sm);">
       <button class="btn-guide" id="btn-guide" aria-label="Guide interactif">
@@ -77,7 +77,7 @@
           </button>
           <button class="mode-btn" data-mode="agent">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 014 4v2a4 4 0 01-8 0V6a4 4 0 014-4z"/><path d="M16 14H8a4 4 0 00-4 4v2h16v-2a4 4 0 00-4-4z"/></svg>
-            Builder Agent
+            Builder GPT
             <span class="mode-badge">GPT / Projet / Gem</span>
           </button>
         </div>
@@ -152,13 +152,13 @@
           </button>
           <button class="mode-btn active" data-mode="agent">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 014 4v2a4 4 0 01-8 0V6a4 4 0 014-4z"/><path d="M16 14H8a4 4 0 00-4 4v2h16v-2a4 4 0 00-4-4z"/></svg>
-            Builder Agent
+            Builder GPT
             <span class="mode-badge">GPT / Projet / Gem</span>
           </button>
         </div>
 
         <h2>Quelle plateforme ?</h2>
-        <p class="step-description">Choisissez la plateforme sur laquelle vous voulez creer votre agent.</p>
+        <p class="step-description">Choisissez la plateforme sur laquelle vous voulez creer votre GPT.</p>
 
         <div class="agent-platform-grid" id="agent-platform-grid"></div>
         <p class="validation-error hidden" id="error-agent-1">Veuillez selectionner une plateforme.</p>
@@ -170,12 +170,12 @@
     <!-- ============================================ -->
     <section class="wizard-step" id="step-agent-2">
       <div class="step-card">
-        <h2>Decrivez votre agent</h2>
-        <p class="step-description">Dites-nous ce que votre agent doit faire. L'IA extraira les champs specifiques.</p>
+        <h2>Decrivez votre GPT</h2>
+        <p class="step-description">Dites-nous ce que votre GPT doit faire. L'IA extraira les champs specifiques.</p>
 
         <div class="form-group">
-          <label for="agent-description">Description libre de votre agent *</label>
-          <textarea id="agent-description" rows="8" placeholder="Ex: Je veux un agent qui m'aide a rediger des articles SEO. Il doit connaitre les bonnes pratiques Google, proposer des titres accrocheurs, structurer en H1/H2/H3, et suggerer des mots-cles pertinents..."></textarea>
+          <label for="agent-description">Description libre de votre GPT *</label>
+          <textarea id="agent-description" rows="8" placeholder="Ex: Je veux un GPT qui m'aide a rediger des articles SEO. Il doit connaitre les bonnes pratiques Google, proposer des titres accrocheurs, structurer en H1/H2/H3, et suggerer des mots-cles pertinents..."></textarea>
           <p class="helper-text">Soyez aussi detaille que possible. L'IA pre-remplira les champs de la prochaine etape.</p>
         </div>
 
@@ -183,7 +183,7 @@
           <div class="extract-spinner"></div>
           <span id="agent-extract-status-text">Analyse en cours...</span>
         </div>
-        <p class="validation-error hidden" id="error-agent-2">Veuillez decrire votre agent.</p>
+        <p class="validation-error hidden" id="error-agent-2">Veuillez decrire votre GPT.</p>
       </div>
     </section>
 
@@ -192,7 +192,7 @@
     <!-- ============================================ -->
     <section class="wizard-step" id="step-agent-3">
       <div class="step-card">
-        <h2 id="agent-fields-title">Configuration de votre agent</h2>
+        <h2 id="agent-fields-title">Configuration de votre GPT</h2>
         <p class="step-description">Les champs ont ete pre-remplis par l'IA. Ajustez-les selon vos besoins.</p>
 
         <!-- Claude Projet fields -->

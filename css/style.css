@@ -1319,6 +1319,59 @@ html.dark .progress-bar-fill {
   margin-top: var(--space-sm);
 }
 
+.smart-choice-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-top: var(--space-xs);
+}
+
+.smart-chip {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.smart-chip:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light, #eff6ff);
+}
+
+.smart-chip.active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+.smart-chip-autre {
+  border-style: dashed;
+}
+
+.smart-chip-autre.active {
+  background: var(--color-primary);
+  color: #fff;
+  border-style: solid;
+}
+
+[data-theme="dark"] .smart-chip {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .smart-chip:hover {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+[data-theme="dark"] .smart-chip.active {
+  background: var(--color-primary);
+  color: #fff;
+}
+
 /* ============================================
    15. MODAL
    ============================================ */
@@ -2787,12 +2840,54 @@ html.dark .agent-platform-card.selected {
   margin-bottom: var(--space-md);
 }
 
+.agent-field-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-sm);
+}
+
 .agent-preview-card h4 {
   font-size: 0.8rem;
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin-bottom: var(--space-sm);
+  margin-bottom: 0;
+}
+
+.btn-copy-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-copy-field:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.btn-copy-field.copied {
+  border-color: var(--color-success, #22c55e);
+  color: var(--color-success, #22c55e);
+}
+
+.btn-copy-inline {
+  padding: 2px 6px;
+  border: none;
+  background: transparent;
+}
+
+.btn-copy-inline:hover {
+  color: var(--color-primary);
 }
 
 .agent-preview-card .field-content {
@@ -2808,6 +2903,9 @@ html.dark .agent-platform-card.selected {
 }
 
 .agent-starter-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   padding: var(--space-sm) var(--space-md);
   background: var(--color-surface);
   border-radius: var(--radius-sm);
@@ -2821,6 +2919,12 @@ html.dark .agent-preview-card {
 
 html.dark .agent-starter-item {
   background: var(--color-surface);
+}
+
+html.dark .btn-copy-field {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
 }
 
 /* ============================================

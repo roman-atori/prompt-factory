@@ -46,6 +46,7 @@ const App = {
     this.renderTaskCards();
     this.renderAgentPlatformCards();
     this._initMultiSelects();
+    this._initFieldAutoScroll();
     this.bindEvents();
     this.updateNavigation();
     this.checkApiKey();
@@ -512,7 +513,7 @@ const App = {
     if (target) document.getElementById(target)?.classList.remove('hidden');
 
     // Update title
-    const titles = { claude: 'Configuration de votre Projet Claude', chatgpt: 'Configuration de votre GPT', gemini: 'Configuration de votre Gem Gemini' };
+    const titles = { claude: 'Configuration de votre Projet Claude', chatgpt: 'Configuration de votre GPT ChatGPT', gemini: 'Configuration de votre Gem Gemini' };
     const titleEl = document.getElementById('agent-fields-title');
     if (titleEl && titles[this.agentPlatform]) titleEl.textContent = titles[this.agentPlatform];
 
@@ -571,6 +572,38 @@ const App = {
     return div.innerHTML;
   },
 
+  // ===== AUTO-SCROLL BETWEEN FIELDS =====
+
+  _initFieldAutoScroll() {
+    // On long steps (agent-3, prompt-2, prompt-3, prompt-4), scroll to next field on blur if filled
+    document.addEventListener('blur', (e) => {
+      const field = e.target;
+      if (!field.matches('input[type="text"], textarea, select')) return;
+
+      // Only on active wizard step
+      const step = field.closest('.wizard-step.active');
+      if (!step) return;
+
+      // Only if the field has a value
+      if (!field.value.trim()) return;
+
+      // Find the parent form-group
+      const currentGroup = field.closest('.form-group');
+      if (!currentGroup) return;
+
+      // Find the next visible form-group in this step
+      const allGroups = Array.from(step.querySelectorAll('.form-group'));
+      const visibleGroups = allGroups.filter(g => !g.closest('.hidden') && g.offsetParent !== null);
+      const idx = visibleGroups.indexOf(currentGroup);
+      if (idx >= 0 && idx < visibleGroups.length - 1) {
+        const nextGroup = visibleGroups[idx + 1];
+        setTimeout(() => {
+          nextGroup.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+      }
+    }, true);
+  },
+
   // ===== AGENT EXTRACTION (Step agent-2 → pre-fill agent-3) =====
 
   async extractAgentFields() {
@@ -621,7 +654,7 @@ const App = {
     } catch (error) {
       status.classList.add('error');
       statusText.textContent = 'Erreur - remplissez manuellement';
-      console.error('Agent extract error:', error.message);
+      console.error('GPT extract error:', error.message);
     }
   },
 
@@ -869,12 +902,11 @@ const App = {
       if (q.type === 'textarea') {
         fieldHtml = `<textarea class="smart-answer" rows="3" placeholder="${q.placeholder || ''}"></textarea>`;
       } else if (q.type === 'choice' && q.options) {
-        fieldHtml = `<select class="smart-answer smart-answer-select">
-          <option value="">Choisir</option>
-          ${q.options.map(o => `<option value="${o}">${o}</option>`).join('')}
-          <option value="__autre__">Autre (saisie libre)...</option>
-        </select>
-        <input type="text" class="smart-answer-autre autre-input hidden" placeholder="Votre réponse personnalisée...">`;
+        fieldHtml = `<div class="smart-choice-chips">
+          ${q.options.map(o => `<button type="button" class="smart-chip" data-value="${this._escapeHTML(o)}">${this._escapeHTML(o)}</button>`).join('')}
+          <button type="button" class="smart-chip smart-chip-autre">Autre...</button>
+        </div>
+        <input type="text" class="smart-answer-autre autre-input hidden" placeholder="Votre reponse personnalisee...">`;
       } else {
         fieldHtml = `<input type="text" class="smart-answer" placeholder="${q.placeholder || ''}">`;
       }
@@ -882,14 +914,18 @@ const App = {
       div.innerHTML = `<label>${q.question}</label>${fieldHtml}`;
       listDiv.appendChild(div);
 
-      // Bind "Autre" toggle for choice questions
-      const select = div.querySelector('.smart-answer-select');
+      // Bind multi-select chips for choice questions
+      const chips = div.querySelectorAll('.smart-chip:not(.smart-chip-autre)');
+      chips.forEach(chip => {
+        chip.addEventListener('click', () => chip.classList.toggle('active'));
+      });
+      const autreChip = div.querySelector('.smart-chip-autre');
       const autreInput = div.querySelector('.smart-answer-autre');
-      if (select && autreInput) {
-        select.addEventListener('change', () => {
-          const isAutre = select.value === '__autre__';
-          autreInput.classList.toggle('hidden', !isAutre);
-          if (isAutre) autreInput.focus();
+      if (autreChip && autreInput) {
+        autreChip.addEventListener('click', () => {
+          autreChip.classList.toggle('active');
+          autreInput.classList.toggle('hidden', !autreChip.classList.contains('active'));
+          if (autreChip.classList.contains('active')) autreInput.focus();
         });
       }
     });
@@ -900,18 +936,34 @@ const App = {
   collectSmartAnswers() {
     const answers = [];
     document.querySelectorAll('.smart-question').forEach(q => {
-      const id = q.dataset.questionId;
-      const input = q.querySelector('.smart-answer');
-      let value = input ? input.value.trim() : '';
+      const label = q.querySelector('label').textContent;
 
-      // If select has "autre" chosen, use the free-text input value
-      if (value === '__autre__') {
+      // Check for chip-based choices first
+      const chips = q.querySelectorAll('.smart-chip.active:not(.smart-chip-autre)');
+      if (chips.length > 0) {
+        const selected = Array.from(chips).map(c => c.dataset.value);
+        // Also add "autre" free text if active
         const autreInput = q.querySelector('.smart-answer-autre');
-        value = autreInput ? autreInput.value.trim() : '';
+        if (autreInput && !autreInput.classList.contains('hidden') && autreInput.value.trim()) {
+          selected.push(autreInput.value.trim());
+        }
+        answers.push({ question: label, answer: selected.join(', ') });
+        return;
       }
 
+      // Check for "autre" chip only (no predefined chip selected)
+      const autreChip = q.querySelector('.smart-chip-autre.active');
+      if (autreChip) {
+        const autreInput = q.querySelector('.smart-answer-autre');
+        const value = autreInput ? autreInput.value.trim() : '';
+        if (value) answers.push({ question: label, answer: value });
+        return;
+      }
+
+      // Fallback: text/textarea input
+      const input = q.querySelector('.smart-answer');
+      const value = input ? input.value.trim() : '';
       if (value) {
-        const label = q.querySelector('label').textContent;
         answers.push({ question: label, answer: value });
       }
     });
@@ -980,9 +1032,16 @@ const App = {
 
   _renderAgentField(label, value) {
     if (!value) return '';
+    const escaped = this._escapeHTML(value);
     return `<div class="agent-preview-card">
-      <h4>${label}</h4>
-      <div class="field-content">${this._escapeHTML(value).replace(/\n/g, '<br>')}</div>
+      <div class="agent-field-header">
+        <h4>${label}</h4>
+        <button class="btn-copy-field" data-copy-value="${escaped.replace(/"/g, '&quot;')}" title="Copier">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          Copier
+        </button>
+      </div>
+      <div class="field-content">${escaped.replace(/\n/g, '<br>')}</div>
     </div>`;
   },
 
@@ -1011,12 +1070,7 @@ const App = {
       html += this._renderAgentField('Description', data.description);
       html += this._renderAgentField('Instructions', data.instructions);
       if (data.conversationStarters && data.conversationStarters.length > 0) {
-        html += `<div class="agent-preview-card">
-          <h4>Amorces de conversation</h4>
-          <ul class="agent-starters-list">
-            ${data.conversationStarters.map(s => `<li class="agent-starter-item">${this._escapeHTML(s)}</li>`).join('')}
-          </ul>
-        </div>`;
+        html += this._renderStartersCard(data.conversationStarters);
       }
     } else if (data.platform === 'gemini') {
       html += this._renderAgentField('Nom', data.name);
@@ -1027,6 +1081,7 @@ const App = {
     preview.innerHTML = html;
     preview.classList.remove('hidden');
     editor.classList.add('hidden');
+    this._bindCopyFieldButtons(preview);
 
     // Store text version for copy/download
     const textVersion = this._agentDataToText(data);
@@ -1038,6 +1093,40 @@ const App = {
 
     // Store agent data for optimization step
     this._currentAgentData = data;
+  },
+
+  _renderStartersCard(starters) {
+    return `<div class="agent-preview-card">
+      <div class="agent-field-header">
+        <h4>Amorces de conversation</h4>
+        <button class="btn-copy-field" data-copy-value="${starters.map(s => this._escapeHTML(s)).join('\n').replace(/"/g, '&quot;')}" title="Copier tout">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          Copier
+        </button>
+      </div>
+      <ul class="agent-starters-list">
+        ${starters.map(s => `<li class="agent-starter-item">
+          <span>${this._escapeHTML(s)}</span>
+          <button class="btn-copy-field btn-copy-inline" data-copy-value="${this._escapeHTML(s).replace(/"/g, '&quot;')}" title="Copier">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          </button>
+        </li>`).join('')}
+      </ul>
+    </div>`;
+  },
+
+  _bindCopyFieldButtons(container) {
+    container.querySelectorAll('.btn-copy-field').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const value = btn.dataset.copyValue;
+        UIHelpers.copyToClipboard(value).then(() => {
+          UIHelpers.showToast('Copie !', 'success', 1500);
+          btn.classList.add('copied');
+          setTimeout(() => btn.classList.remove('copied'), 1500);
+        });
+      });
+    });
   },
 
   // ===== PREVIEW & GENERATION (Step 7) =====
@@ -1538,6 +1627,7 @@ const App = {
     const previewOriginal = document.getElementById('preview-original');
     const editorOriginal = document.getElementById('editor-original');
     previewOriginal.innerHTML = this._renderAgentPreviewCards(agentData);
+    this._bindCopyFieldButtons(previewOriginal);
     previewOriginal.classList.remove('hidden');
     editorOriginal.classList.add('hidden');
     const originalText = this._agentDataToText(agentData);
@@ -1565,8 +1655,7 @@ const App = {
       html += this._renderAgentField('Description', data.description);
       html += this._renderAgentField('Instructions', data.instructions);
       if (data.conversationStarters && data.conversationStarters.length > 0) {
-        html += `<div class="agent-preview-card"><h4>Amorces de conversation</h4>
-          <ul class="agent-starters-list">${data.conversationStarters.map(s => `<li class="agent-starter-item">${this._escapeHTML(s)}</li>`).join('')}</ul></div>`;
+        html += this._renderStartersCard(data.conversationStarters);
       }
     } else if (data.platform === 'gemini') {
       html += this._renderAgentField('Nom', data.name);
@@ -1825,7 +1914,7 @@ const App = {
     const agentData = this._originalAgentData || this.collectAgentData();
     const agentText = this._agentDataToText(agentData);
 
-    this._setLoadingState(true, 'Optimisation de l\'agent en cours...');
+    this._setLoadingState(true, 'Optimisation du GPT en cours...');
     this._startProgressSimulation();
 
     try {
@@ -1863,6 +1952,7 @@ const App = {
         this._optimizedAgentData = optimizedData;
         const previewOptimized = document.getElementById('preview-optimized');
         previewOptimized.innerHTML = this._renderAgentPreviewCards(optimizedData);
+        this._bindCopyFieldButtons(previewOptimized);
         previewOptimized.classList.remove('hidden');
         document.getElementById('editor-optimized').classList.add('hidden');
 
